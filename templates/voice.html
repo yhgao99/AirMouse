@@ -732,9 +732,9 @@
                     <path d="M15.41,16.58L10.83,12L15.41,7.41L14,6L8,12L14,18L15.41,16.58Z" />
                 </svg>
             </div>
-            <button id="rotate-screen-btn" class="h-btn" data-action="rotate" title="旋转屏幕90°">
-                <svg viewBox="0 0 24 24" style="width:16px; height:16px; fill:#fff;">
-                    <path d="M16.48,2.52C19.75,4.07 22.09,7.24 22.45,11H23.95C23.44,4.84 18.29,0 12,0L11.34,0.03L15.15,3.84L16.48,2.52M12,24C18.29,24 23.44,19.16 23.95,13H22.45C22.09,16.76 19.75,19.93 16.48,21.48L15.15,20.16L11.34,23.97L12,24M7.52,21.48C4.25,19.93 1.91,16.76 1.55,13H0.05C0.56,19.16 5.71,24 12,24L12.66,23.97L8.85,20.16L7.52,21.48M12,0C5.71,0 0.56,4.84 0.05,11H1.55C1.91,7.24 4.25,4.07 7.52,2.52L8.85,3.84L12.66,0.03L12,0Z"/>
+            <button id="rotate-screen-btn" class="h-btn" data-action="rotate" title="全屏/横屏模式">
+                <svg id="fs-icon" viewBox="0 0 24 24" style="width:18px; height:18px; fill:#fff;">
+                    <path id="fs-icon-path" d="M5,5H10V7H7V10H5V5M14,5H19V10H17V7H14V5M17,14H19V19H14V17H17V14M10,17V19H5V14H7V17H10Z" />
                 </svg>
             </button>
         </div>
@@ -1025,30 +1025,99 @@
                 document.body.classList.add('layout-portrait');
                 document.body.classList.remove('layout-landscape');
             }
+            updateFullscreenIcon();
         }
 
-        function toggleScreenOrientation() {
-            v();
-            const isPhysicalLandscape = window.innerWidth > window.innerHeight;
-            if (isPhysicalLandscape) {
-                if (document.body.classList.contains('virtual-portrait')) {
-                    document.body.classList.remove('virtual-portrait');
-                    localStorage.setItem('voice_virtual_orientation', 'normal');
-                } else {
-                    document.body.classList.add('virtual-portrait');
-                    localStorage.setItem('voice_virtual_orientation', 'portrait');
-                }
+        // --- 动态更新放大/全屏图标 ---
+        function updateFullscreenIcon() {
+            const iconPath = document.getElementById('fs-icon-path');
+            if (!iconPath) return;
+            const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+            const isLandscape = isFs || document.body.classList.contains('virtual-landscape') || (window.innerWidth > window.innerHeight);
+
+            if (isLandscape || isFs) {
+                // 已全屏/横屏：显示缩小/退出图标
+                iconPath.setAttribute('d', 'M14,14H19V16H16V19H14V14M5,14H10V19H8V16H5V14M8,5H10V10H5V8H8V5M19,8V10H14V5H16V8H19Z');
             } else {
-                if (document.body.classList.contains('virtual-landscape')) {
-                    document.body.classList.remove('virtual-landscape');
-                    localStorage.setItem('voice_virtual_orientation', 'normal');
-                } else {
+                // 竖屏常态：显示同款放大/进入全屏图标
+                iconPath.setAttribute('d', 'M5,5H10V7H7V10H5V5M14,5H19V10H17V7H14V5M17,14H19V19H14V17H17V14M10,17V19H5V14H7V17H10Z');
+            }
+        }
+
+        // --- 切换全屏 / 横屏模式（对标触摸板控制页同款 requestFullscreen + 自动硬件级旋转） ---
+        async function toggleScreenOrientation() {
+            v();
+            const docEl = document.documentElement;
+            const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+            const isPhysicalLandscape = window.innerWidth > window.innerHeight;
+            const isVirtualLandscape = document.body.classList.contains('virtual-landscape');
+            const isCurrentlyLandscape = isFs || isPhysicalLandscape || isVirtualLandscape;
+
+            if (!isCurrentlyLandscape) {
+                // 1. 优先调用触摸板页同款的原生 requestFullscreen
+                let fsSuccess = false;
+                try {
+                    if (docEl.requestFullscreen) {
+                        await docEl.requestFullscreen();
+                        fsSuccess = true;
+                    } else if (docEl.webkitRequestFullscreen) {
+                        await docEl.webkitRequestFullscreen();
+                        fsSuccess = true;
+                    }
+                } catch (e) {
+                    console.log("Fullscreen request failed:", e);
+                }
+
+                // 2. 在全屏环境下锁定硬件横屏（让手机屏幕真正跟着转过来！）
+                if (screen.orientation && screen.orientation.lock) {
+                    screen.orientation.lock('landscape').catch(() => {});
+                }
+
+                // 3. 针对不支持原生全屏旋转的环境 (如部分 iOS Safari)，以 90° 虚拟旋转兜底
+                if (!fsSuccess && window.innerWidth <= window.innerHeight) {
                     document.body.classList.add('virtual-landscape');
                     localStorage.setItem('voice_virtual_orientation', 'landscape');
+                } else {
+                    document.body.classList.remove('virtual-landscape');
+                    localStorage.setItem('voice_virtual_orientation', 'normal');
                 }
+            } else {
+                // 还原为竖屏并退出全屏
+                if (screen.orientation && screen.orientation.unlock) {
+                    try { screen.orientation.unlock(); } catch (e) {}
+                }
+                if (screen.orientation && screen.orientation.lock) {
+                    screen.orientation.lock('portrait').catch(() => {});
+                }
+
+                try {
+                    if (document.exitFullscreen) {
+                        await document.exitFullscreen();
+                    } else if (document.webkitExitFullscreen) {
+                        await document.webkitExitFullscreen();
+                    }
+                } catch (e) {
+                    console.log("Exit fullscreen failed:", e);
+                }
+
+                document.body.classList.remove('virtual-landscape');
+                document.body.classList.remove('virtual-portrait');
+                localStorage.setItem('voice_virtual_orientation', 'normal');
             }
+
             updateOrientationClasses();
+            updateFullscreenIcon();
         }
+
+        // 监听系统全屏变化
+        document.addEventListener('fullscreenchange', () => {
+            updateOrientationClasses();
+            updateFullscreenIcon();
+        });
+        document.addEventListener('webkitfullscreenchange', () => {
+            updateOrientationClasses();
+            updateFullscreenIcon();
+        });
 
         // 启动时恢复旋转偏好设置
         const savedOrientation = localStorage.getItem('voice_virtual_orientation');
