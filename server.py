@@ -15,14 +15,14 @@ signal.signal(signal.SIGTERM, lambda s, f: sys.exit(0))
 # macOS 激活策略设置：隐藏 Dock 图标，作为后台守护服务静默运行
 if platform.system() == 'Darwin':
     try:
-        from AppKit import NSBundle, NSApplication, NSApplicationActivationPolicyProhibited
+        from AppKit import NSBundle, NSApplication, NSApplicationActivationPolicyAccessory
         bundle = NSBundle.mainBundle()
         if bundle:
             info = bundle.localizedInfoDictionary() or bundle.infoDictionary()
             if info:
                 info['LSUIElement'] = '1'
-        # 立即锁定禁止策略，彻底隐藏 Dock 栏图标（不显示火箭）
-        NSApplication.sharedApplication().setActivationPolicy_(NSApplicationActivationPolicyProhibited)
+        # 设为 Accessory 策略：不在 Dock 栏生成图标，但允许顶部菜单栏与浮窗交互
+        NSApplication.sharedApplication().setActivationPolicy_(NSApplicationActivationPolicyAccessory)
     except Exception:
         pass
 
@@ -284,8 +284,19 @@ def run_mac_menu_bar():
     import AppKit
 
     app = AppKit.NSApplication.sharedApplication()
-    # 锁定静默后台 Agent 模式，不显示 Dock 栏图标
-    app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyProhibited)
+    # 锁定 Accessory 模式：不占用 Dock 栏，但允许顶部菜单栏与窗口正常交互
+    app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyAccessory)
+
+    # 检查并主动请求辅助功能权限
+    is_trusted = True
+    try:
+        import ApplicationServices
+        is_trusted = ApplicationServices.AXIsProcessTrusted()
+        if not is_trusted:
+            # 唤起系统设置授权提示并注册进辅助功能列表
+            ApplicationServices.AXIsProcessTrustedWithOptions({'AXTrustedCheckOptionPrompt': True})
+    except Exception:
+        pass
 
     status_bar = AppKit.NSStatusBar.systemStatusBar()
     status_item = status_bar.statusItemWithLength_(AppKit.NSVariableStatusItemLength)
@@ -328,6 +339,9 @@ def run_mac_menu_bar():
         def openHome_(self, sender):
             open_page('/')
 
+        def openAccessibilitySettings_(self, sender):
+            subprocess.run(['open', 'x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'])
+
         def copyUrl_(self, sender):
             try:
                 pasteboard = AppKit.NSPasteboard.generalPasteboard()
@@ -349,6 +363,15 @@ def run_mac_menu_bar():
     _mac_menu_target = target  # 保持全局引用防 Python 垃圾回收
 
     menu = AppKit.NSMenu.alloc().init()
+
+    # 如果未开启辅助功能权限，显示警告操作项
+    if not is_trusted:
+        perm_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            '⚠️ 未开启辅助功能权限 (点击打开系统设置)', 'openAccessibilitySettings:', ''
+        )
+        perm_item.setTarget_(target)
+        menu.addItem_(perm_item)
+        menu.addItem_(AppKit.NSMenuItem.separatorItem())
 
     # 1. 状态与 IP 显示
     status_header = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
@@ -766,8 +789,7 @@ def check_already_running():
         pass
 
 if __name__ == '__main__':
-    if is_frozen():
-        check_already_running()
+    check_already_running()
 
     use_tray = os.environ.get('AIRMOUSE_NO_TRAY') != '1'
     hide_console = os.environ.get('AIRMOUSE_SHOW_CONSOLE') != '1'
