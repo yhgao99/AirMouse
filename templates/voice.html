@@ -34,9 +34,10 @@
 
         /* 顶部导航 */
         .header {
-            padding: 15px 20px;
+            padding: 10px 12px;
             display: flex;
             align-items: center;
+            justify-content: space-between;
             background: rgba(18, 18, 18, 0.8);
             backdrop-filter: blur(20px);
             border-bottom: 1px solid #1a1a1a;
@@ -46,30 +47,33 @@
         .header-left {
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin-right: 15px;
+            gap: 6px;
+            margin-right: 6px;
+            flex-shrink: 0;
         }
 
         .back-btn {
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
             display: flex;
             align-items: center;
             justify-content: center;
             border-radius: 50%;
             background: #1a1a1a;
             margin-right: 0;
+            flex-shrink: 0;
         }
 
         #rotate-screen-btn {
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
             display: flex;
             align-items: center;
             justify-content: center;
             border-radius: 50%;
             background: #1a1a1a;
             border: none;
+            flex-shrink: 0;
         }
 
         .back-btn svg {
@@ -279,20 +283,33 @@
 
         .header-actions {
             display: flex;
-            gap: 10px;
+            gap: 4px;
+            align-items: center;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            flex-shrink: 0;
+        }
+
+        .header-actions::-webkit-scrollbar {
+            display: none;
         }
 
         .h-btn {
-            padding: 8px 12px;
+            padding: 6px 8px;
             background: #1a1a1a;
             border-radius: 8px;
-            font-size: 13px;
+            font-size: 11px;
             font-weight: 600;
             display: flex;
             align-items: center;
-            gap: 5px;
+            justify-content: center;
+            gap: 3px;
             color: var(--text);
             border: none;
+            flex-shrink: 0;
+            height: 36px;
+            box-sizing: border-box;
         }
 
         .h-btn svg {
@@ -755,6 +772,12 @@
             <button class="h-btn" data-action="select_all" title="全选">
                 ^A
             </button>
+            <button class="h-btn" data-action="copy" title="复制">
+                ^C
+            </button>
+            <button class="h-btn" data-action="paste" title="粘贴">
+                ^V
+            </button>
             <button class="h-btn" data-action="shift" title="Shift">
                 Shift
             </button>
@@ -990,6 +1013,12 @@
         function ctrlZ() {
             socket.emit('key_combo', { keys: [modifierKey, 'z'] });
         }
+        function ctrlC() {
+            socket.emit('key_combo', { keys: [modifierKey, 'c'] });
+        }
+        function ctrlV() {
+            socket.emit('key_combo', { keys: [modifierKey, 'v'] });
+        }
         function sendShift() {
             socket.emit('key_action', { key: 'shift', action: 'down' });
             setTimeout(() => { socket.emit('key_action', { key: 'shift', action: 'up' }); }, 30);
@@ -1199,6 +1228,10 @@
                 ctrlZ();
             } else if (action === 'select_all') {
                 ctrlA();
+            } else if (action === 'copy') {
+                ctrlC();
+            } else if (action === 'paste') {
+                ctrlV();
             } else if (action === 'shift') {
                 sendShift();
             } else if (action === 'backspace') {
