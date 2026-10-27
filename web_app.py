@@ -10,6 +10,7 @@ app = Flask(
     template_folder=resource_path('templates'),
     static_folder=resource_path('static'),
 )
+app.config['TEMPLATES_AUTO_RELOAD'] = True
 # 允许所有来源跨域，确保手机能连上
 socketio = SocketIO(app, cors_allowed_origins="*")
 
