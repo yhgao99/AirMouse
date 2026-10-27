@@ -15,6 +15,12 @@
             --text-secondary: #888;
         }
 
+        html, body {
+            overscroll-behavior: none;
+            -webkit-overscroll-behavior: none;
+            -webkit-touch-callout: none;
+        }
+
         body {
             margin: 0;
             background: var(--bg);
@@ -96,12 +102,51 @@
         }
 
         .input-container {
-            flex: 1.2;
-            padding: 10px 20px;
+            flex: 1;
+            padding: 10px 20px 0;
             display: flex;
             flex-direction: column;
             position: relative;
-            min-height: 0;
+            min-height: 80px;
+        }
+
+        /* 极简超细拖拽分割条（视觉极窄，触摸区域舒适） */
+        .resize-divider {
+            height: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: row-resize;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            z-index: 5;
+            margin: 0 20px;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        /* 隐藏的触摸热区：上下各向外延展 10px，方便大拇指触摸 */
+        .resize-divider::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            bottom: -10px;
+            left: 0;
+            right: 0;
+        }
+
+        .resize-handle {
+            width: 36px;
+            height: 3px;
+            background: #2c2c2e;
+            border-radius: 2px;
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        .resize-divider:active .resize-handle {
+            background: var(--primary);
+            transform: scaleY(1.6);
         }
 
         #input-window {
@@ -123,7 +168,7 @@
         /* 迷你触摸板样式 */
         #pad {
             flex: 1;
-            margin: 10px 20px;
+            margin: 2px 20px 8px;
             background: #080808;
             border: 1px dashed #222;
             border-radius: 20px;
@@ -136,6 +181,12 @@
             font-weight: bold;
             letter-spacing: 4px;
             min-height: 100px;
+            touch-action: none;
+            overscroll-behavior: none;
+            -webkit-overscroll-behavior: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
         }
 
         /* 底部操作栏（紧凑版） */
@@ -256,11 +307,27 @@
 
             .input-container {
                 flex: 1;
+                min-width: 100px;
+                min-height: 0;
+            }
+
+            .resize-divider {
+                width: 10px;
+                height: auto;
+                cursor: col-resize;
+                margin: 20px 0;
+            }
+
+            .resize-handle {
+                width: 3px;
+                height: 36px;
             }
 
             #pad {
                 flex: 1;
                 margin-left: 0;
+                min-width: 100px;
+                min-height: 0;
             }
 
             .toolbar-area {
@@ -348,13 +415,19 @@
             <button class="h-btn" onclick="v(); sendShift()">
                 Shift
             </button>
-            <button class="h-btn" ontouchstart="v(); startBS()" ontouchend="stopBS()" ontouchcancel="stopBS()">
+            <button class="h-btn" 
+                ontouchstart="v(); startBS(); event.preventDefault();" 
+                ontouchend="stopBS()" 
+                ontouchcancel="stopBS()"
+                onmousedown="v(); startBS()"
+                onmouseup="stopBS()"
+                onmouseleave="stopBS()">
                 <svg viewBox="0 0 24 24">
                     <path
                         d="M22,3H7C6.31,3 5.77,3.35 5.41,3.88L0,12L5.41,20.11C5.77,20.64 6.31,21 7,21H22A2,2 0 0,0 24,19V5A2,2 0 0,0 22,3M19,15.59L17.59,17L14,13.41L10.41,17L9,15.59L12.59,12L9,8.41L10.41,7L14,10.59L17.59,7L19,8.41L15.41,12" />
                 </svg>
             </button>
-            <button class="h-btn" onclick="v(); sendEnter()">
+            <button class="h-btn" onclick="v(); sendEnter()" onmousedown="v()">
                 <svg viewBox="0 0 24 24">
                     <path d="M19,7V11H5.83L9.41,7.41L8,6L2,12L8,18L9.41,16.59L5.83,13H21V7H19Z" />
                 </svg>
@@ -381,6 +454,11 @@
                     </svg>
                 </button>
             </div>
+        </div>
+
+        <!-- 可拖拽分割条 -->
+        <div id="resize-divider" class="resize-divider" title="按住拖拽调节大小">
+            <div class="resize-handle"></div>
         </div>
 
         <!-- 新增触摸板区域 -->
@@ -467,10 +545,7 @@
             updateModifierUI();
         }
         function sendEnter() {
-            socket.emit('key_action', { key: 'enter', action: 'down' });
-            setTimeout(() => {
-                socket.emit('key_action', { key: 'enter', action: 'up' });
-            }, 30);
+            socket.emit('key_action', { key: 'enter', action: 'tap' });
         }
 
         // 初始化修饰键 UI
@@ -545,28 +620,29 @@
             inputWindow.focus();
         }
 
-        // 发送全部文字（手动模式）
+        // 发送全部文字（手动/分次模式：发送后自动清空输入框）
         function sendFullText() {
-            const text = inputWindow.value;
+            const text = inputWindow.value.trim();
             if (text.length > 0) {
                 socket.emit('type_text', { text: text });
-                lastSentValue = text;
+                triggerFlyAnimation(text);
+                inputWindow.value = "";
+                lastSentValue = "";
             }
         }
 
-        // 发送退格逻辑升级：物理按下/抬起，支持长按连发
+        // 发送退格逻辑升级：使用系统级 tap
         function sendBSOnce() {
-            socket.emit('key_action', { key: 'backspace', action: 'down' });
-            setTimeout(() => { socket.emit('key_action', { key: 'backspace', action: 'up' }); }, 30);
+            socket.emit('key_action', { key: 'backspace', action: 'tap' });
         }
 
         function startBS() {
             sendBSOnce(); // 先删一个
             if (bsTimer) { clearTimeout(bsTimer); clearInterval(bsTimer); }
-            // 延时 500ms 后开始连发，速度调慢到 100ms 一个字，更精准
+            // 延时 400ms 后开始连发
             bsTimer = setTimeout(() => {
-                bsTimer = setInterval(sendBSOnce, 100);
-            }, 500);
+                bsTimer = setInterval(sendBSOnce, 90);
+            }, 400);
         }
 
         function stopBS() {
@@ -597,6 +673,66 @@
             getSensitivity: () => sensitivity,
             feedback: feedback
         });
+
+        // --- 拖拽调节输入框与触控板大小比例 ---
+        const resizeDivider = document.getElementById('resize-divider');
+        const mainContentEl = document.querySelector('.main-content');
+        const containerEl = document.getElementById('container');
+        const padEl = document.getElementById('pad');
+
+        function applyLayoutRatio(ratio) {
+            ratio = Math.max(0.18, Math.min(0.82, ratio));
+            containerEl.style.flex = (ratio * 10).toFixed(2);
+            padEl.style.flex = ((1 - ratio) * 10).toFixed(2);
+            localStorage.setItem('voice_layout_ratio', ratio.toFixed(3));
+        }
+
+        const savedRatio = parseFloat(localStorage.getItem('voice_layout_ratio')) || 0.45;
+        applyLayoutRatio(savedRatio);
+
+        // 双击分割条快速恢复 1:1 等比
+        resizeDivider.addEventListener('dblclick', () => {
+            v();
+            applyLayoutRatio(0.5);
+        });
+
+        function initResizeDrag(e) {
+            if (e.cancelable) e.preventDefault();
+            v();
+            const rect = mainContentEl.getBoundingClientRect();
+            const isLandscape = window.innerWidth > window.innerHeight;
+
+            const onMove = (moveEvt) => {
+                if (moveEvt.cancelable) moveEvt.preventDefault();
+                const curY = moveEvt.touches ? moveEvt.touches[0].clientY : moveEvt.clientY;
+                const curX = moveEvt.touches ? moveEvt.touches[0].clientX : moveEvt.clientX;
+
+                let ratio;
+                if (isLandscape) {
+                    ratio = (curX - rect.left) / rect.width;
+                } else {
+                    ratio = (curY - rect.top) / rect.height;
+                }
+                applyLayoutRatio(ratio);
+            };
+
+            const onEnd = () => {
+                window.removeEventListener('mousemove', onMove);
+                window.removeEventListener('mouseup', onEnd);
+                window.removeEventListener('touchmove', onMove);
+                window.removeEventListener('touchend', onEnd);
+                window.removeEventListener('touchcancel', onEnd);
+            };
+
+            window.addEventListener('mousemove', onMove, { passive: false });
+            window.addEventListener('mouseup', onEnd);
+            window.addEventListener('touchmove', onMove, { passive: false });
+            window.addEventListener('touchend', onEnd);
+            window.addEventListener('touchcancel', onEnd);
+        }
+
+        resizeDivider.addEventListener('mousedown', initResizeDrag);
+        resizeDivider.addEventListener('touchstart', initResizeDrag, { passive: false });
 
     </script>
 </body>

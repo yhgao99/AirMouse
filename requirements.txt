@@ -1,0 +1,11 @@
+psutil
+flask
+flask-socketio
+pyautogui
+pynput
+pyopenssl
+pillow
+pystray; platform_system != "Darwin"
+pyobjc-core; platform_system == "Darwin"
+pyobjc-framework-Quartz; platform_system == "Darwin"
+pyobjc-framework-ApplicationServices; platform_system == "Darwin"

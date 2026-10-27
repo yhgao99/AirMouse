@@ -15,6 +15,7 @@ if platform.system() == 'Darwin':
         pass
 
 mouse = Controller()
+_is_dragging = False
 
 def wake_up_cursor():
     if platform.system() == 'Windows':
@@ -24,7 +25,9 @@ def wake_up_cursor():
         ctypes.windll.user32.mouse_event(MOUSEEVENTF_MOVE, -1, -1, 0, 0)
 
 def handle_move(data):
-    mouse.move(data['dx'], data['dy'])
+    dx = data.get('dx', 0)
+    dy = data.get('dy', 0)
+    mouse.move(dx, dy)
     wake_up_cursor()
 
 def handle_click(data):
@@ -41,11 +44,15 @@ def handle_click(data):
         mouse.click(Button.x2)
 
 def handle_drag_start():
-    mouse.release(Button.left)
-    mouse.press(Button.left)
+    global _is_dragging
+    if not _is_dragging:
+        mouse.press(Button.left)
+        _is_dragging = True
 
 def handle_drag_end():
+    global _is_dragging
     mouse.release(Button.left)
+    _is_dragging = False
 
 def handle_mid_down():
     mouse.release(Button.middle)

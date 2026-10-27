@@ -526,9 +526,38 @@
         }
 
         function sendKey(key) {
-            socket.emit('key_action', { key: key, action: 'down' });
-            setTimeout(() => { socket.emit('key_action', { key: key, action: 'up' }); }, 30);
+            socket.emit('key_action', { key: key, action: 'tap' });
         }
+
+        // --- Mac 专属键帽适配与常亮 ---
+        function applyMacKeycaps() {
+            const winBtn = document.getElementById('win-key');
+            if (winBtn) winBtn.innerText = '⌘ CMD';
+            const altBtn = document.getElementById('alt-key');
+            if (altBtn) altBtn.innerText = '⌥ OPT';
+            const altRBtn = document.getElementById('alt_r-key');
+            if (altRBtn) altRBtn.innerText = '⌥ OPT';
+        }
+        socket.on('os_info', (data) => {
+            if (data && data.os === 'Darwin') applyMacKeycaps();
+        });
+        if (/Mac|iPhone|iPod|iPad/i.test(navigator.userAgent || navigator.platform)) {
+            applyMacKeycaps();
+        }
+
+        // --- 屏幕常亮 (Wake Lock) ---
+        let wakeLock = null;
+        async function requestWakeLock() {
+            if ('wakeLock' in navigator) {
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                } catch (e) {}
+            }
+        }
+        requestWakeLock();
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') requestWakeLock();
+        });
 
         function submitText() {
             const input = document.getElementById('text-input');

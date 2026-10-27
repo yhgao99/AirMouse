@@ -1,5 +1,5 @@
 {
-    "current": "douyin",
+    "current": "mac",
     "profiles": {
         "Default": {
             "cols": 4,
@@ -393,6 +393,91 @@
                     "label": "page",
                     "emoji": "📄",
                     "keys": "f"
+                }
+            ]
+        },
+        "mac": {
+            "cols": 4,
+            "buttons": [
+                {
+                    "label": "Spotlight",
+                    "emoji": "🔍",
+                    "keys": "cmd,space"
+                },
+                {
+                    "label": "复制",
+                    "emoji": "📋",
+                    "keys": "cmd,c"
+                },
+                {
+                    "label": "粘贴",
+                    "emoji": "📌",
+                    "keys": "cmd,v"
+                },
+                {
+                    "label": "撤销",
+                    "emoji": "↩️",
+                    "keys": "cmd,z"
+                },
+                {
+                    "label": "切窗口",
+                    "emoji": "🔀",
+                    "keys": "cmd,tab"
+                },
+                {
+                    "label": "截屏",
+                    "emoji": "📸",
+                    "keys": "cmd,shift,4"
+                },
+                {
+                    "label": "全屏",
+                    "emoji": "⛶",
+                    "keys": "ctrl,cmd,f"
+                },
+                {
+                    "label": "关标签",
+                    "emoji": "✖️",
+                    "keys": "cmd,w"
+                },
+                {
+                    "label": "调度中心",
+                    "emoji": "🪟",
+                    "keys": "ctrl,up"
+                },
+                {
+                    "label": "强退",
+                    "emoji": "🛑",
+                    "keys": "cmd,alt,esc"
+                },
+                {
+                    "label": "锁屏",
+                    "emoji": "🔒",
+                    "keys": "ctrl,cmd,q"
+                },
+                {
+                    "label": "重做",
+                    "emoji": "↪️",
+                    "keys": "cmd,shift,z"
+                },
+                {
+                    "label": "空格",
+                    "emoji": "⏸️",
+                    "keys": "space"
+                },
+                {
+                    "label": "回车",
+                    "emoji": "↵",
+                    "keys": "enter"
+                },
+                {
+                    "label": "退格",
+                    "emoji": "⌫",
+                    "keys": "backspace"
+                },
+                {
+                    "label": "ESC",
+                    "emoji": "⎋",
+                    "keys": "esc"
                 }
             ]
         }

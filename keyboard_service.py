@@ -9,7 +9,6 @@ active_repeats = {} # {key_code: stop_event}
 
 def repeat_key(key_obj, stop_event):
     """模拟系统自动重复按键的线程"""
-    keyboard.press(key_obj)
     if stop_event.wait(0.4): return
     
     while not stop_event.is_set():
@@ -17,19 +16,29 @@ def repeat_key(key_obj, stop_event):
         if stop_event.wait(0.05): break
 
 def handle_key_action(data):
-    action = data['action'] # 'down' 或 'up'
+    action = data.get('action', 'tap') # 'down' 或 'up' 或 'tap'
     key_code = data['key'].lower().strip()
     special_keys = get_special_keys()
     
     target_key = special_keys.get(key_code, key_code)
 
+    if action == 'tap':
+        try:
+            keyboard.tap(target_key)
+        except Exception:
+            keyboard.press(target_key)
+            time.sleep(0.02)
+            keyboard.release(target_key)
+        return
+
     if action == 'down':
         if key_code in active_repeats:
             return
+        keyboard.press(target_key)
         stop_event = threading.Event()
         active_repeats[key_code] = stop_event
         threading.Thread(target=repeat_key, args=(target_key, stop_event), daemon=True).start()
-    else:
+    elif action == 'up':
         if key_code in active_repeats:
             stop_event = active_repeats[key_code]
             stop_event.set()

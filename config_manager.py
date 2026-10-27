@@ -65,14 +65,19 @@ def get_special_keys():
         'up': Key.up, 'down': Key.down, 'left': Key.left, 'right': Key.right,
         'page_up': Key.page_up, 'page_down': Key.page_down, 
         'home': Key.home, 'end': Key.end,
-        'insert': Key.insert, 'delete': Key.delete,
+        'delete': Key.delete,
 
         # 常用功能键 (Standard Keys)
         'enter': Key.enter, 'esc': Key.esc, 'tab': Key.tab, 
         'backspace': Key.backspace, 'space': Key.space,
-        'caps_lock': Key.caps_lock, 'num_lock': Key.num_lock,
-        'scroll_lock': Key.scroll_lock, 'print_screen': Key.print_screen,
-        'pause': Key.pause,
+        'caps_lock': Key.caps_lock,
+
+        # 跨平台可选按键（Mac 键盘通常无此实体按键，通过 getattr 安全获取避免 AttributeError）
+        'insert': getattr(Key, 'insert', None),
+        'num_lock': getattr(Key, 'num_lock', None),
+        'scroll_lock': getattr(Key, 'scroll_lock', None),
+        'print_screen': getattr(Key, 'print_screen', None),
+        'pause': getattr(Key, 'pause', None),
 
         # F1-F20 (Function Keys)
         **{f'f{i}': getattr(Key, f'f{i}') for i in range(1, 21)},
@@ -92,6 +97,6 @@ def get_special_keys():
     }
     # Windows 特有
     if os_type == 'Windows':
-        keys['prtsc'] = Key.print_screen
+        keys['prtsc'] = getattr(Key, 'print_screen', None)
         
-    return keys
+    return {k: v for k, v in keys.items() if v is not None}

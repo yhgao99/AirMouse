@@ -90,32 +90,29 @@ python server.py
 - 建议使用安卓手机+chrome浏览器。
 - 虽然 ios  safari 浏览器也可以正常使用，但是鼠标的移动会变得卡卡的。
 
-# macos相关
-使用mac版本需要线修改一些py代码，才能正常使用。
-```py
-# 删除printscreen键
+## 🍎 macOS 专属增强与开箱即用
+已内置 macOS 深度原生适配，**无需手动修改任何代码**，在 Mac 上双击 `start.command` 即可一键开箱即用：
+* **全套原生触控板手势**：
+  * **四指下滑**：原生 App Exposé（展开当前活跃 App 名下所有窗口，直调 Dock 内部通道，零按键冲突）
+  * **四指左右滑**：原生切屏（在各桌面与全屏应用间平滑切换，硬件级 HID 管道）
+  * **四指上滑**：调度中心（Mission Control）
+  * **四指轻点**：开启 / 关闭启动台（Launchpad）
+  * **三指拖动**：流畅框选文本与拖拽文件
+* **双指 2D 物理惯性滚动**：支持平滑加速度滑冰与触碰即停
+* **拟真触觉反馈**：Web Audio 清脆音效 + 多级微震动模拟（Taptic Engine 体验）
+* **移动端防息屏**：引入 Web Wake Lock API，手机触控板常亮不黑屏
+* **底层兼容优化**：彻底解决 macOS 下 `pystray` 托盘崩溃及 `pynput` 按键兼容性问题
 
-SPECIAL_KEYS = {
-    'ctrl': Key.ctrl, 'ctrl_r': Key.ctrl_r,
-    'shift': Key.shift, 'shift_r': Key.shift_r,
-    'alt': Key.alt, 'alt_r': Key.alt_r,
-    'win': Key.cmd, 'command': Key.cmd, 'meta': Key.cmd,
-    'enter': Key.enter, 'esc': Key.esc, 'tab': Key.tab, 'backspace': Key.backspace,
-    'space': Key.space, 'delete': Key.delete,
-    'up': Key.up, 'down': Key.down, 'left': Key.left, 'right': Key.right,
-    'f1': Key.f1, 'f2': Key.f2, 'f3': Key.f3, 'f4': Key.f4, 'f5': Key.f5, 'f6': Key.f6,
-    'f7': Key.f7, 'f8': Key.f8, 'f9': Key.f9, 'f10': Key.f10, 'f11': Key.f11, 'f12': Key.f12
-}
-
-# 修改滚动方向,它滚动方向和 Windows 是反过来的
-@socketio.on('scroll')
-def handle_scroll(data):
-    # 处理双指滑动或按钮连发发来的滚动信号
-    mouse.scroll(0, -data['dy']) 
-```
-
-    
 ## 更新日志
+### 2026-10-27 macOS 原生体验全面增强 (Mac Enhanced)
+- [x] 原生系统级手势：四指下滑（App Exposé）、四指左右滑（切屏/全屏切换）、四指上滑（调度中心）、四指轻点（启动台）、三指拖拽（文本与文件拖拽）
+- [x] CoreDock 底层通道对接：无需模拟键盘按键，直通 Dock 守护进程，零冲突、免特殊权限
+- [x] 2D 物理惯性滚动：双指甩动带加速度滑行，手指触碰瞬间制动
+- [x] Taptic Engine 拟真触觉：Web Audio 清脆微动音效与多级震动反馈
+- [x] 移动端防息屏：引入 Web Wake Lock API，手机触控板常亮不黑屏
+- [x] macOS 开箱即用：自动适配 Mac 快捷键与自然滚动，修复主线程托盘冲突，新增 `start.command` 双击一键启动脚本
+- [x] 语音输入体验优化：分次输入模式下自动上屏并清空输入框
+
 2026-01-23 Day3
 - [x]  两个手指快速抬起导致识别成鼠标跳转修复
 - [x]  “单指长按拖拽”功能

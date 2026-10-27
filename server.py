@@ -385,8 +385,151 @@ def on_key(data): keyboard_service.handle_key_action(data)
 @socketio.on('key_combo')
 def on_combo(data): keyboard_service.handle_combo(data)
 
+# ==========================================
+# macOS 原生系统级手势底层支持 (CoreDock + Quartz HID)
+# ==========================================
+def _get_dock_notify():
+    """获取 macOS 内部 CoreDock 通知接口，直通 Dock 守护进程"""
+    try:
+        import ctypes, ctypes.util
+        app_services = ctypes.cdll.LoadLibrary('/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices')
+        func = getattr(app_services, 'CoreDockSendNotification', None)
+        if func:
+            func.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            func.restype = None
+            cf = ctypes.cdll.LoadLibrary(ctypes.util.find_library('CoreFoundation'))
+            cf.CFStringCreateWithCString.restype = ctypes.c_void_p
+            cf.CFStringCreateWithCString.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_uint32]
+            def _notify(name):
+                s = cf.CFStringCreateWithCString(None, name.encode('utf-8'), 0x08000100)
+                func(s, None)
+            return _notify
+    except Exception:
+        pass
+    return None
+
+_dock_notify = _get_dock_notify() if platform.system() == 'Darwin' else None
+
+def mac_dock_action(notification_name, fallback_cmd=None):
+    """直接调用 macOS Dock 内部机制触发系统手势，无按键冲突、无权限错误"""
+    if _dock_notify:
+        try:
+            _dock_notify(notification_name)
+            return True
+        except Exception:
+            pass
+    if fallback_cmd:
+        try:
+            subprocess.Popen(fallback_cmd)
+            return True
+        except Exception:
+            pass
+    return False
+
+def mac_switch_space(direction):
+    """通过 Quartz HIDSystemState 硬件通道发送系统级切屏快捷键 (Ctrl + Left/Right)"""
+    try:
+        import Quartz
+        key_code = 123 if direction == 'left' else 124
+        CTRL_KEY = 59  # kVK_Control
+        src = Quartz.CGEventSourceCreate(Quartz.kCGEventSourceStateHIDSystemState)
+
+        # 1. 发送 Control 键按下
+        ctrl_d = Quartz.CGEventCreateKeyboardEvent(src, CTRL_KEY, True)
+        Quartz.CGEventSetFlags(ctrl_d, Quartz.kCGEventFlagMaskControl)
+        Quartz.CGEventPost(Quartz.kCGHIDEventTap, ctrl_d)
+        time.sleep(0.01)
+
+        # 2. 发送 方向键按下 (带 Control 与 SecondaryFn 硬件标志，确保被 WindowServer 截获并执行切屏)
+        arrow_flags = Quartz.kCGEventFlagMaskControl | Quartz.kCGEventFlagMaskSecondaryFn
+        arrow_d = Quartz.CGEventCreateKeyboardEvent(src, key_code, True)
+        Quartz.CGEventSetFlags(arrow_d, arrow_flags)
+        Quartz.CGEventPost(Quartz.kCGHIDEventTap, arrow_d)
+        time.sleep(0.02)
+
+        # 3. 发送 方向键抬起
+        arrow_u = Quartz.CGEventCreateKeyboardEvent(src, key_code, False)
+        Quartz.CGEventSetFlags(arrow_u, arrow_flags)
+        Quartz.CGEventPost(Quartz.kCGHIDEventTap, arrow_u)
+        time.sleep(0.01)
+
+        # 4. 发送 Control 键抬起
+        ctrl_u = Quartz.CGEventCreateKeyboardEvent(src, CTRL_KEY, False)
+        Quartz.CGEventPost(Quartz.kCGHIDEventTap, ctrl_u)
+    except Exception as e:
+        print(f"mac_switch_space error: {e}")
+
+@socketio.on('system_gesture')
+def on_system_gesture(data):
+    action = data.get('action') if isinstance(data, dict) else str(data)
+    is_mac = platform.system() == 'Darwin'
+    if is_mac:
+        if action == 'mission_control':
+            # 调度中心 (全屏所有窗口展开)
+            if not mac_dock_action('com.apple.expose.awake', ['open', '-a', 'Mission Control']):
+                try:
+                    subprocess.Popen(['open', '-a', 'Mission Control'])
+                except Exception:
+                    pass
+
+        elif action in ('app_expose', 'swipe_down'):
+            # 选项 1：纯正原生的 App Exposé (展开当前活跃软件的名下所有窗口)
+            # 优先通过 Dock 内部机制直接触发，绝不发送干扰键盘的按键，绝无双发或权限1002错误
+            if not mac_dock_action('com.apple.expose.front.awake'):
+                # 备用方案：模拟 Ctrl + Down (带 SecondaryFn 标志)
+                try:
+                    import Quartz
+                    src = Quartz.CGEventSourceCreate(Quartz.kCGEventSourceStateHIDSystemState)
+                    ctrl_d = Quartz.CGEventCreateKeyboardEvent(src, 59, True)
+                    Quartz.CGEventSetFlags(ctrl_d, Quartz.kCGEventFlagMaskControl)
+                    Quartz.CGEventPost(Quartz.kCGHIDEventTap, ctrl_d)
+                    time.sleep(0.01)
+                    flags = Quartz.kCGEventFlagMaskControl | Quartz.kCGEventFlagMaskSecondaryFn
+                    down_d = Quartz.CGEventCreateKeyboardEvent(src, 125, True)
+                    Quartz.CGEventSetFlags(down_d, flags)
+                    Quartz.CGEventPost(Quartz.kCGHIDEventTap, down_d)
+                    time.sleep(0.02)
+                    down_u = Quartz.CGEventCreateKeyboardEvent(src, 125, False)
+                    Quartz.CGEventSetFlags(down_u, flags)
+                    Quartz.CGEventPost(Quartz.kCGHIDEventTap, down_u)
+                    time.sleep(0.01)
+                    ctrl_u = Quartz.CGEventCreateKeyboardEvent(src, 59, False)
+                    Quartz.CGEventPost(Quartz.kCGHIDEventTap, ctrl_u)
+                except Exception:
+                    pass
+
+        elif action == 'space_left':
+            # 切换到左侧空间 (桌面 / 全屏应用)
+            mac_switch_space('left')
+
+        elif action == 'space_right':
+            # 切换到右侧空间 (桌面 / 全屏应用)
+            mac_switch_space('right')
+
+        elif action == 'show_desktop':
+            # 显示桌面
+            mac_dock_action('com.apple.showdesktop.awake')
+
+        elif action == 'launchpad':
+            # 启动台
+            if not mac_dock_action('com.apple.launchpad.toggle', ['open', '-a', 'Launchpad']):
+                try:
+                    subprocess.Popen(['open', '-a', 'Launchpad'])
+                except Exception:
+                    pass
+    else:
+        # Windows 对应手势
+        if action == 'mission_control':
+            keyboard_service.handle_combo({'keys': ['win', 'tab']})
+        elif action in ('show_desktop', 'app_expose', 'swipe_down'):
+            keyboard_service.handle_combo({'keys': ['win', 'd']})
+        elif action == 'space_left':
+            keyboard_service.handle_combo({'keys': ['ctrl', 'win', 'left']})
+        elif action == 'space_right':
+            keyboard_service.handle_combo({'keys': ['ctrl', 'win', 'right']})
+
 if __name__ == '__main__':
-    use_tray = os.environ.get('AIRMOUSE_NO_TRAY') != '1'
+    use_tray = os.environ.get('AIRMOUSE_NO_TRAY') != '1' and platform.system() != 'Darwin'
     hide_console = os.environ.get('AIRMOUSE_SHOW_CONSOLE') != '1'
 
     if hide_console:
