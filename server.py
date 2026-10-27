@@ -304,12 +304,18 @@ def run_mac_menu_bar():
     _mac_status_item = status_item
 
     button = status_item.button()
-    icon_path = resource_path('static', 'app-icon.png')
+    icon_path = resource_path('static', 'menu-icon@2x.png')
+    if not os.path.exists(icon_path):
+        icon_path = resource_path('static', 'menu-icon.png')
+    if not os.path.exists(icon_path):
+        icon_path = resource_path('static', 'app-icon.png')
+
     if os.path.exists(icon_path):
         try:
             icon = AppKit.NSImage.alloc().initWithContentsOfFile_(icon_path)
             if icon:
                 icon.setSize_(AppKit.NSMakeSize(18, 18))
+                icon.setTemplate_(True)  # 设为 macOS 官方 Template 模式：透明背景、自适应纯色线框轮廓
                 button.setImage_(icon)
             else:
                 button.setTitle_('🖱️')
