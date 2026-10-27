@@ -492,26 +492,37 @@ class Touchpad {
 
                 const centerMoveDist = Math.hypot(cx - this.sx, cy - this.sy);
 
-                // 状态未锁定时智能裁决：缩放 vs 旋转 vs 滚动
+                // 极坐标微积分分析：计算切向弧长变化 (旋转) 与 径向间距变化 (缩放)
+                const midRadius = (currentDist + (this.twoFingerInitialDist || currentDist)) / 4.0;
+                const tangentialDelta = midRadius * Math.abs(totalAngleFromStart);
+                const radialDelta = Math.abs(distDeltaFromStart);
+
+                // 状态未锁定时智能裁决：旋转 vs 缩放 vs 滚动 (优先捕获旋转与缩放意图)
                 if (!this.twoFingerState) {
-                    // 1. 缩放倾向：两指间距变化大于 18px
-                    if (Math.abs(distDeltaFromStart) > 18) {
+                    // 1. 旋转判定：两指相对旋转超过 13 度 (约 0.22 弧度) 且切向位移主导
+                    if (Math.abs(totalAngleFromStart) > 0.22 && (tangentialDelta > radialDelta * 0.75)) {
+                        this.twoFingerState = 'rotate';
+                        this.hasZoomedOrRotated = true;
+                        this.scrollHistory = [];
+                        this._stopInertia();
+
+                        // 灵敏触发：转过 13 度立刻下发第一次旋转！手感极佳、零迟滞
+                        const direction = totalAngleFromStart > 0 ? 'right' : 'left';
+                        this.socket.emit('rotate', { direction });
+                        this.haptics.trigger('rotate');
+                        this._showGestureToast(direction === 'right' ? '↻ 顺时针旋转 90°' : '↺ 逆时针旋转 90°');
+                        this.accumRotateAngle = 0;
+                    }
+                    // 2. 缩放判定：两指间距变化大于 16px 且径向位移主导
+                    else if (radialDelta > 16 && (radialDelta > tangentialDelta * 0.75)) {
                         this.twoFingerState = 'pinch';
                         this.accumZoomDist = 0;
                         this.hasZoomedOrRotated = true;
                         this.scrollHistory = [];
                         this._stopInertia();
                     }
-                    // 2. 旋转倾向：相对转角大于 18 度 (约 0.31 弧度)
-                    else if (Math.abs(totalAngleFromStart) > 0.31) {
-                        this.twoFingerState = 'rotate';
-                        this.accumRotateAngle = 0;
-                        this.hasZoomedOrRotated = true;
-                        this.scrollHistory = [];
-                        this._stopInertia();
-                    }
-                    // 3. 滚动倾向：两指中心移动明显 (> 14px) 且间距/角度基本不变
-                    else if (centerMoveDist > 14 && Math.abs(distDeltaFromStart) < 12 && Math.abs(totalAngleFromStart) < 0.22) {
+                    // 3. 滚动判定：两指中心移动明显 (> 14px) 且间距与角度保持稳定
+                    else if (centerMoveDist > 14 && radialDelta < 12 && Math.abs(totalAngleFromStart) < 0.18) {
                         this.twoFingerState = 'scroll';
                     }
                 }
@@ -525,9 +536,9 @@ class Touchpad {
                     const frameDistDelta = currentDist - (this.twoFingerLastDist || currentDist);
                     this.accumZoomDist += frameDistDelta;
 
-                    const ZOOM_STEP = 22;
+                    const ZOOM_STEP = 20;
                     const now = Date.now();
-                    if (Math.abs(this.accumZoomDist) >= ZOOM_STEP && (now - this.lastZoomTime > 80)) {
+                    if (Math.abs(this.accumZoomDist) >= ZOOM_STEP && (now - this.lastZoomTime > 75)) {
                         const direction = this.accumZoomDist > 0 ? 'in' : 'out';
                         this.socket.emit('zoom', { direction });
                         this.haptics.trigger('zoom');
@@ -543,7 +554,7 @@ class Touchpad {
                     return;
                 }
 
-                // 2. 双指旋转模式 (Two-finger Rotate)
+                // 2. 双指旋转模式 (Two-finger Rotate) - 轻松连续旋转
                 if (this.twoFingerState === 'rotate') {
                     this.hasZoomedOrRotated = true;
                     this.scrollHistory = [];
@@ -551,8 +562,8 @@ class Touchpad {
 
                     this.accumRotateAngle += angleDiff;
 
-                    // 旋转累积超过 30 度 (约 0.52 弧度) 触发旋转 90°
-                    const ROTATE_STEP = 0.52;
+                    // 持续旋动阈值：后续每继续转动 24 度 (约 0.42 弧度) 触发下一次旋转
+                    const ROTATE_STEP = 0.42;
                     if (Math.abs(this.accumRotateAngle) >= ROTATE_STEP) {
                         const direction = this.accumRotateAngle > 0 ? 'right' : 'left';
                         this.socket.emit('rotate', { direction });
