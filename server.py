@@ -278,7 +278,153 @@ def show_startup_dialog():
     root.mainloop()
 
 
-def run_with_tray():
+def run_mac_menu_bar():
+    """macOS 原生顶部菜单栏（NSStatusBar），0 额外内存开销，原生响应"""
+    import gc
+    import AppKit
+
+    app = AppKit.NSApplication.sharedApplication()
+    # 锁定静默后台 Agent 模式，不显示 Dock 栏图标
+    app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyProhibited)
+
+    status_bar = AppKit.NSStatusBar.systemStatusBar()
+    status_item = status_bar.statusItemWithLength_(AppKit.NSVariableStatusItemLength)
+    global _mac_status_item
+    _mac_status_item = status_item
+
+    button = status_item.button()
+    icon_path = resource_path('static', 'app-icon.png')
+    if os.path.exists(icon_path):
+        try:
+            icon = AppKit.NSImage.alloc().initWithContentsOfFile_(icon_path)
+            if icon:
+                icon.setSize_(AppKit.NSMakeSize(18, 18))
+                button.setImage_(icon)
+            else:
+                button.setTitle_('🖱️')
+        except Exception:
+            button.setTitle_('🖱️')
+    else:
+        button.setTitle_('🖱️')
+
+    # 获取推荐局域网 IP
+    try:
+        targets = get_all_ip_addresses()
+    except Exception:
+        targets = []
+
+    rec_ip = "127.0.0.1"
+    for iface, ip in targets:
+        if any(kw in iface.lower() for kw in ["en0", "en1", "wlan", "wi-fi"]):
+            rec_ip = ip
+            break
+
+    connect_url = f"https://{rec_ip}:{PORT}/connect"
+
+    class MacMenuTarget(AppKit.NSObject):
+        def openConnect_(self, sender):
+            open_page('/connect')
+
+        def openHome_(self, sender):
+            open_page('/')
+
+        def copyUrl_(self, sender):
+            try:
+                pasteboard = AppKit.NSPasteboard.generalPasteboard()
+                pasteboard.clearContents()
+                pasteboard.setString_forType_(connect_url, AppKit.NSPasteboardTypeString)
+                subprocess.run([
+                    'osascript', '-e',
+                    'display notification "扫码连接地址已复制到剪贴板" with title "AirMouse"'
+                ], capture_output=True)
+            except Exception as e:
+                print(f"copyUrl error: {e}")
+
+        def quitApp_(self, sender):
+            app.terminate_(None)
+            os._exit(0)
+
+    target = MacMenuTarget.alloc().init()
+    global _mac_menu_target
+    _mac_menu_target = target  # 保持全局引用防 Python 垃圾回收
+
+    menu = AppKit.NSMenu.alloc().init()
+
+    # 1. 状态与 IP 显示
+    status_header = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+        f'🟢 AirMouse 运行中 (端口: {PORT})', None, ''
+    )
+    status_header.setEnabled_(False)
+    menu.addItem_(status_header)
+
+    ip_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+        f'📍 本机 IP: {rec_ip}', None, ''
+    )
+    ip_item.setEnabled_(False)
+    menu.addItem_(ip_item)
+
+    menu.addItem_(AppKit.NSMenuItem.separatorItem())
+
+    # 2. 核心快捷操作
+    qr_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+        '📷 打开扫码连接页 (二维码)', 'openConnect:', ''
+    )
+    qr_item.setTarget_(target)
+    menu.addItem_(qr_item)
+
+    home_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+        '🖥️ 打开电脑控制台', 'openHome:', ''
+    )
+    home_item.setTarget_(target)
+    menu.addItem_(home_item)
+
+    copy_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+        '📋 复制手机扫码连接地址', 'copyUrl:', ''
+    )
+    copy_item.setTarget_(target)
+    menu.addItem_(copy_item)
+
+    menu.addItem_(AppKit.NSMenuItem.separatorItem())
+
+    # 3. 退出
+    quit_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+        '🚪 退出 AirMouse', 'quitApp:', 'q'
+    )
+    quit_item.setTarget_(target)
+    menu.addItem_(quit_item)
+
+    status_item.setMenu_(menu)
+    status_item.setHighlightMode_(True)
+
+    # 在后台子线程启动 Flask-SocketIO 服务
+    server_thread = threading.Thread(target=start_server, daemon=True)
+    server_thread.start()
+
+    # 启动 2 秒后执行一次垃圾回收整理内存
+    def trim_memory():
+        time.sleep(2.0)
+        gc.collect()
+
+    threading.Thread(target=trim_memory, daemon=True).start()
+
+    # App 或首次启动时打开扫码页并提示
+    if is_frozen() or os.environ.get('AIRMOUSE_AUTO_OPEN') == '1':
+        def notify_start():
+            time.sleep(0.8)
+            open_page('/connect')
+            subprocess.run([
+                'osascript', '-e',
+                'display notification "AirMouse 菜单栏已就绪，可随时从屏幕右上角扫码或管理" with title "AirMouse 已启动"'
+            ], capture_output=True)
+
+        threading.Thread(target=notify_start, daemon=True).start()
+
+    # 主线程进入 Cocoa 原生事件循环
+    app.run()
+
+
+def run_windows_tray():
+    """Windows 原生任务栏系统托盘（pystray + Win32）"""
     import pystray
     from pystray import MenuItem as Item
 
@@ -319,6 +465,14 @@ def run_with_tray():
             pass
 
     tray_thread.join()
+
+
+def run_with_tray():
+    """跨平台托盘入口调度"""
+    if platform.system() == 'Darwin':
+        run_mac_menu_bar()
+    else:
+        run_windows_tray()
 
 
 # --- SocketIO 事件绑定 ---
@@ -615,7 +769,7 @@ if __name__ == '__main__':
     if is_frozen():
         check_already_running()
 
-    use_tray = os.environ.get('AIRMOUSE_NO_TRAY') != '1' and platform.system() != 'Darwin'
+    use_tray = os.environ.get('AIRMOUSE_NO_TRAY') != '1'
     hide_console = os.environ.get('AIRMOUSE_SHOW_CONSOLE') != '1'
 
     if hide_console:
@@ -625,8 +779,8 @@ if __name__ == '__main__':
         try:
             run_with_tray()
             sys.exit(0)
-        except Exception:
-            # Fall back to console mode if tray dependencies are unavailable.
+        except Exception as e:
+            print(f"Tray error: {e}, falling back to console mode")
             pass
 
     ips = get_all_ip_addresses()

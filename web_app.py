@@ -1,9 +1,13 @@
 import platform
 import socket
+import logging
 import psutil
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO
 from app_paths import resource_path
+
+# 抑制高频控制台网络请求日志，节省内存与 CPU 开销
+logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
 app = Flask(
     __name__,
@@ -11,8 +15,8 @@ app = Flask(
     static_folder=resource_path('static'),
 )
 app.config['TEMPLATES_AUTO_RELOAD'] = True
-# 允许所有来源跨域，确保手机能连上
-socketio = SocketIO(app, cors_allowed_origins="*")
+# 允许所有来源跨域，静默 SocketIO 高频事件日志缓冲
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading', logger=False, engineio_logger=False)
 
 WIRELESS_HINTS = ("wlan", "wi-fi", "wifi", "wireless", "en0", "en1")
 WIRED_HINTS = ("ethernet", "eth", "enp", "eno", "realtek", "intel")

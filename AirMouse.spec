@@ -2,6 +2,9 @@
 import sys
 import platform
 
+is_mac = platform.system() == 'Darwin'
+is_win = platform.system() == 'Windows'
+
 datas = [
     ('templates', 'templates'),
     ('static', 'static'),
@@ -23,6 +26,23 @@ hiddenimports = [
     'PIL',
     'cryptography'
 ]
+
+if is_win:
+    hiddenimports += [
+        'pystray._win32',
+        'tkinter',
+        '_tkinter',
+    ]
+    icon_target = ['build/app-icon.ico']
+elif is_mac:
+    hiddenimports += [
+        'AppKit',
+        'Foundation',
+        'Quartz',
+    ]
+    icon_target = ['build/AppIcon.icns']
+else:
+    icon_target = None
 
 a = Analysis(
     ['server.py'],
@@ -55,7 +75,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['build/AppIcon.icns'],
+    icon=icon_target,
 )
 
 coll = COLLECT(
@@ -68,22 +88,24 @@ coll = COLLECT(
     name='AirMouse',
 )
 
-info_plist = {
-    'CFBundleDisplayName': 'AirMouse',
-    'CFBundleName': 'AirMouse',
-    'CFBundleIdentifier': 'com.yhgao99.airmouse',
-    'CFBundleVersion': '1.0.0',
-    'CFBundleShortVersionString': '1.0.0',
-    'NSHighResolutionCapable': True,
-    'NSRequiresAquaSystemAppearance': False,
-    'NSAccessibilityUsageDescription': 'AirMouse 需要辅助功能权限以模拟鼠标移动、手势控制与键盘按键输入。',
-    'NSAppleEventsUsageDescription': 'AirMouse 需要系统控制权限以触发窗口调度与手势切换。',
-}
+if is_mac:
+    info_plist = {
+        'CFBundleDisplayName': 'AirMouse',
+        'CFBundleName': 'AirMouse',
+        'CFBundleIdentifier': 'com.yhgao99.airmouse',
+        'CFBundleVersion': '1.0.0',
+        'CFBundleShortVersionString': '1.0.0',
+        'NSHighResolutionCapable': True,
+        'NSRequiresAquaSystemAppearance': False,
+        'LSUIElement': '1',  # 明确指示 macOS 为菜单栏后台 Agent 软件，不在 Dock 栏生成图标
+        'NSAccessibilityUsageDescription': 'AirMouse 需要辅助功能权限以模拟鼠标移动、手势控制与键盘按键输入。',
+        'NSAppleEventsUsageDescription': 'AirMouse 需要系统控制权限以触发窗口调度与手势切换。',
+    }
 
-app = BUNDLE(
-    coll,
-    name='AirMouse.app',
-    icon='build/AppIcon.icns',
-    bundle_identifier='com.yhgao99.airmouse',
-    info_plist=info_plist,
-)
+    app = BUNDLE(
+        coll,
+        name='AirMouse.app',
+        icon='build/AppIcon.icns',
+        bundle_identifier='com.yhgao99.airmouse',
+        info_plist=info_plist,
+    )
