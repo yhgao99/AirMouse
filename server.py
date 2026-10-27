@@ -545,39 +545,27 @@ def mac_post_cmd_key(keycode):
 
 @socketio.on('zoom')
 def on_zoom(data):
-    # 双指缩放：放大 / 缩小
+    # 双指缩放：放大 / 缩小 (零延迟、零卡顿、无阻塞)
     direction = data.get('direction', 'in') if isinstance(data, dict) else 'in'
-    steps = data.get('steps', 1) if isinstance(data, dict) else 1
-    steps = max(1, min(steps, 4))
     is_mac = platform.system() == 'Darwin'
     if is_mac:
         try:
             import Quartz
             src = Quartz.CGEventSourceCreate(Quartz.kCGEventSourceStateHIDSystemState)
-            # 1. 触发原生通用缩放快捷键：放大 Cmd + '=' (key 24); 缩小 Cmd + '-' (key 27)
+            # 触发原生通用缩放快捷键：放大 Cmd + '=' (key 24); 缩小 Cmd + '-' (key 27)
             keycode = 24 if direction == 'in' else 27
-            for _ in range(steps):
-                kd = Quartz.CGEventCreateKeyboardEvent(src, keycode, True)
-                Quartz.CGEventSetFlags(kd, Quartz.kCGEventFlagMaskCommand)
-                Quartz.CGEventPost(Quartz.kCGHIDEventTap, kd)
-                time.sleep(0.008)
-                ku = Quartz.CGEventCreateKeyboardEvent(src, keycode, False)
-                Quartz.CGEventSetFlags(ku, Quartz.kCGEventFlagMaskCommand)
-                Quartz.CGEventPost(Quartz.kCGHIDEventTap, ku)
-                time.sleep(0.008)
-
-            # 2. 辅以平滑 Command + 滚轮微缩放（适配 Safari/Chrome/Figma/Maps 等）
-            scroll_delta = 6 if direction == 'in' else -6
-            ev = Quartz.CGEventCreateScrollWheelEvent(src, Quartz.kCGScrollEventUnitPixel, 1, scroll_delta * steps)
-            Quartz.CGEventSetFlags(ev, Quartz.kCGEventFlagMaskCommand)
-            Quartz.CGEventPost(Quartz.kCGHIDEventTap, ev)
+            kd = Quartz.CGEventCreateKeyboardEvent(src, keycode, True)
+            Quartz.CGEventSetFlags(kd, Quartz.kCGEventFlagMaskCommand)
+            ku = Quartz.CGEventCreateKeyboardEvent(src, keycode, False)
+            Quartz.CGEventSetFlags(ku, Quartz.kCGEventFlagMaskCommand)
+            Quartz.CGEventPost(Quartz.kCGHIDEventTap, kd)
+            Quartz.CGEventPost(Quartz.kCGHIDEventTap, ku)
         except Exception as e:
             print(f"zoom error: {e}")
     else:
         # Windows: Ctrl + '+' / Ctrl + '-'
         key = '+' if direction == 'in' else '-'
-        for _ in range(steps):
-            keyboard_service.handle_combo({'keys': ['ctrl', key]})
+        keyboard_service.handle_combo({'keys': ['ctrl', key]})
 
 @socketio.on('rotate')
 def on_rotate(data):
@@ -586,6 +574,7 @@ def on_rotate(data):
     is_mac = platform.system() == 'Darwin'
     if is_mac:
         # 顺时针旋转: Cmd + R (key 15); 逆时针旋转: Cmd + L (key 37)
+        # 适用于预览(Preview)、访达空格预览、照片(Photos)等原生看图与设计软件
         keycode = 15 if direction == 'right' else 37
         mac_post_cmd_key(keycode)
     else:
