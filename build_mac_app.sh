@@ -44,7 +44,28 @@ codesign --force --deep --sign - "dist/AirMouse.app"
 # 4. 去除可能存在的隔离属性 (Quarantine)
 xattr -cr "dist/AirMouse.app" 2>/dev/null || true
 
+# 5. 压制生成 macOS DMG 分发安装镜像
+echo "💿 正在压制 AirMouse.dmg 安装镜像..."
+DMG_STAGING="build/dmg_staging"
+rm -rf "$DMG_STAGING" "dist/AirMouse.dmg"
+mkdir -p "$DMG_STAGING"
+
+# 复制生成的 AirMouse.app 并建立 /Applications 快捷安装软链接
+cp -R "dist/AirMouse.app" "$DMG_STAGING/"
+ln -s /Applications "$DMG_STAGING/Applications"
+
+# 使用 macOS 官方 hdiutil 压制高压缩只读 DMG
+hdiutil create \
+    -volname "AirMouse" \
+    -srcfolder "$DMG_STAGING" \
+    -ov \
+    -format UDZO \
+    "dist/AirMouse.dmg"
+
+rm -rf "$DMG_STAGING"
+
 echo "=========================================="
-echo "🎉 构建完成！应用位于:"
-echo "   $DIR/dist/AirMouse.app"
+echo "🎉 全部构建完成！"
+echo "   📱 原生应用: $DIR/dist/AirMouse.app"
+echo "   💿 分发镜像: $DIR/dist/AirMouse.dmg"
 echo "=========================================="
