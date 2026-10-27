@@ -137,14 +137,6 @@ def keyboard_page():
 def voice_page():
     return render_template('voice.html', server_os=platform.system())
 
-@app.route('/test')
-def vibe_test():
-    return render_template('vibe_test.html')
-
-@app.route('/t')
-def air_mouse_test():
-    return render_template('t.html')
-
 @app.route('/r')
 def real_mouse_page():
     return render_template('realmouse.html')

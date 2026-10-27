@@ -40,20 +40,6 @@ def save_gp_macros(data):
 # 特殊按键映射表
 def get_special_keys():
     os_type = platform.system()
-    # keys = {
-    #     'ctrl': Key.ctrl, 'ctrl_r': Key.ctrl_r,
-    #     'shift': Key.shift, 'shift_r': Key.shift_r,
-    #     'alt': Key.alt, 'alt_r': Key.alt_r,
-    #     'win': Key.cmd, 'command': Key.cmd, 'meta': Key.cmd,
-    #     'enter': Key.enter, 'esc': Key.esc, 'tab': Key.tab, 'backspace': Key.backspace,
-    #     'space': Key.space, 'delete': Key.delete,
-    #     'up': Key.up, 'down': Key.down, 'left': Key.left, 'right': Key.right,
-    #     'f1': Key.f1, 'f2': Key.f2, 'f3': Key.f3, 'f4': Key.f4, 'f5': Key.f5, 'f6': Key.f6,
-    #     'f7': Key.f7, 'f8': Key.f8, 'f9': Key.f9, 'f10': Key.f10, 'f11': Key.f11, 'f12': Key.f12,
-    #     # 符号别名
-    #     'comma': ',', 'dot': '.', 'slash': '/', 'semicolon': ';', 'quote': "'", 'bracket_l': '[', 'bracket_r': ']'
-    # }
-
     keys = {
         # 修饰键 (Modifiers)
         'ctrl': Key.ctrl, 'ctrl_l': Key.ctrl_l, 'ctrl_r': Key.ctrl_r,
@@ -61,7 +47,7 @@ def get_special_keys():
         'alt': Key.alt, 'alt_l': Key.alt_l, 'alt_r': Key.alt_r,
         'win': Key.cmd, 'command': Key.cmd, 'meta': Key.cmd, 'cmd': Key.cmd,
 
-        # 导航键 (Navigation) - 你的错误就在这里补全
+        # 导航键 (Navigation)
         'up': Key.up, 'down': Key.down, 'left': Key.left, 'right': Key.right,
         'page_up': Key.page_up, 'page_down': Key.page_down, 
         'home': Key.home, 'end': Key.end,
