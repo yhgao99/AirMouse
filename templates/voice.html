@@ -103,7 +103,7 @@
 
         .input-container {
             flex: 1;
-            padding: 10px 20px 0;
+            padding: 8px 10px 0;
             display: flex;
             flex-direction: column;
             position: relative;
@@ -121,7 +121,7 @@
             user-select: none;
             -webkit-user-select: none;
             z-index: 5;
-            margin: 0 20px;
+            margin: 0 8px;
             flex-shrink: 0;
             position: relative;
         }
@@ -168,10 +168,10 @@
         /* 迷你触摸板样式 */
         #pad {
             flex: 1;
-            margin: 2px 20px 8px;
+            margin: 2px 6px 2px;
             background: #080808;
             border: 1px dashed #222;
-            border-radius: 20px;
+            border-radius: 14px;
             position: relative;
             display: flex;
             align-items: center;
@@ -191,11 +191,11 @@
 
         /* 底部操作栏（紧凑版） */
         .toolbar-area {
-            padding: 8px 15px;
+            padding: 4px 6px calc(4px + env(safe-area-inset-bottom, 0px));
             background: #000;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
         }
 
         .toolbar-top {
@@ -315,7 +315,7 @@
                 width: 10px;
                 height: auto;
                 cursor: col-resize;
-                margin: 20px 0;
+                margin: 8px 0;
             }
 
             .resize-handle {
@@ -325,13 +325,13 @@
 
             #pad {
                 flex: 1;
-                margin-left: 0;
+                margin: 2px 6px 2px 0;
                 min-width: 100px;
                 min-height: 0;
             }
 
             .toolbar-area {
-                padding: 5px 15px 10px;
+                padding: 4px 10px calc(4px + env(safe-area-inset-bottom, 0px));
                 flex-direction: row;
                 align-items: center;
                 justify-content: space-between;
@@ -342,7 +342,7 @@
             }
 
             .hint {
-                display: none;
+                display: none !important;
             }
         }
 
@@ -439,17 +439,17 @@
 
     <div class="main-content">
         <div class="input-container" id="container">
-            <textarea id="input-window" ...></textarea>
-            <div class="box-actions" style="position: absolute; right: 35px; bottom: 25px; display: flex; gap: 12px;">
+            <textarea id="input-window" placeholder="点击这里开始说话(用输入法语音)..." spellcheck="false"></textarea>
+            <div class="box-actions" style="position: absolute; right: 20px; bottom: 12px; display: flex; gap: 10px;">
                 <button class="box-btn btn-clear" onclick="v(); clearText()"
-                    style="background:#2a2a2a; border:none; border-radius:10px; width:42px; height:42px;">
-                    <svg viewBox="0 0 24 24" style="fill:#FF3B30; width:20px;">
+                    style="background:#2a2a2a; border:none; border-radius:10px; width:40px; height:40px;">
+                    <svg viewBox="0 0 24 24" style="fill:#FF3B30; width:18px;">
                         <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19V4M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" />
                     </svg>
                 </button>
                 <button id="header-send-btn" class="box-btn btn-send" onclick="v(); sendFullText()"
-                    style="background:var(--primary); border:none; border-radius:10px; width:42px; height:42px;">
-                    <svg viewBox="0 0 24 24" style="fill:#fff; width:20px;">
+                    style="background:var(--primary); border:none; border-radius:10px; width:40px; height:40px;">
+                    <svg viewBox="0 0 24 24" style="fill:#fff; width:18px;">
                         <path d="M2,21L23,12L2,3V10L17,12L2,14V21Z" />
                     </svg>
                 </button>
@@ -479,8 +479,6 @@
             </div>
         </div>
     </div>
-
-    <div class="hint" style="margin-bottom: 5px;">混合模式：语音输入 + 鼠标控制</div>
 
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script src="/static/js/touchpad.js"></script>
@@ -551,9 +549,10 @@
         // 初始化修饰键 UI
         updateModifierUI();
 
-        // 设置模式
+        // 设置模式并保存记忆
         function setMode(mode) {
             currentMode = mode;
+            localStorage.setItem('voice_mode', mode);
             document.getElementById('mode-realtime').classList.toggle('active', mode === 'realtime');
             document.getElementById('mode-manual').classList.toggle('active', mode === 'manual');
 
@@ -665,8 +664,9 @@
             socket.emit('key_action', { key: 'shift', action: 'down' });
             setTimeout(() => { socket.emit('key_action', { key: 'shift', action: 'up' }); }, 30);
         }
-        // 初始化
-        setMode('realtime');
+        // 初始化（优先恢复用户配置记忆：分次或实时）
+        const savedMode = localStorage.getItem('voice_mode') || 'realtime';
+        setMode(savedMode);
 
         // --- 触目板模块化加载 ---
         const touchpad = new TouchpadModule('pad', socket, {
