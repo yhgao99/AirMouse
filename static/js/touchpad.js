@@ -120,25 +120,210 @@ class Touchpad {
         this.scrollHistory = [];
         this.inertiaAnimId = null;
 
-        this._bindEvents();
+        // 🌙 OLED 纯黑息屏盲操模式
+        this.isBlackoutMode = false;
+        this.blackoutOverlay = null;
+
+        this._bindEvents(this.pad);
+        this._initBlackoutOverlay();
     }
 
-    _bindEvents() {
-        this.pad.oncontextmenu = (e) => e.preventDefault();
-        this.pad.addEventListener('contextmenu', e => e.preventDefault());
+    _bindEvents(targetElement = this.pad) {
+        if (!targetElement) return;
+        targetElement.oncontextmenu = (e) => e.preventDefault();
+        targetElement.addEventListener('contextmenu', e => e.preventDefault());
 
-        this.pad.addEventListener('touchstart', e => {
+        targetElement.addEventListener('touchstart', e => {
             if (e.cancelable) e.preventDefault();
             this._handleTouchStart(e);
         }, { passive: false });
 
-        this.pad.addEventListener('touchmove', e => {
+        targetElement.addEventListener('touchmove', e => {
             if (e.cancelable) e.preventDefault();
             this._handleTouchMove(e);
         }, { passive: false });
 
-        this.pad.addEventListener('touchend', e => this._handleTouchEnd(e));
-        this.pad.addEventListener('touchcancel', () => this._handleTouchCancel());
+        targetElement.addEventListener('touchend', e => this._handleTouchEnd(e));
+        targetElement.addEventListener('touchcancel', () => this._handleTouchCancel());
+    }
+
+    _initBlackoutOverlay() {
+        if (typeof document === 'undefined') return;
+        let overlay = document.getElementById('airmouse-blackout-overlay');
+        if (!overlay) {
+            if (!document.body) {
+                window.addEventListener('DOMContentLoaded', () => this._initBlackoutOverlay());
+                return;
+            }
+            overlay = document.createElement('div');
+            overlay.id = 'airmouse-blackout-overlay';
+            overlay.style.cssText = `
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                height: 100dvh;
+                background: #000000;
+                z-index: 2147483647;
+                touch-action: none;
+                user-select: none;
+                -webkit-user-select: none;
+                box-sizing: border-box;
+                overflow: hidden;
+            `;
+
+            // 顶部微光防误触退出胶囊 (双击此处或三指轻点退出)
+            const capsule = document.createElement('div');
+            capsule.id = 'airmouse-blackout-capsule';
+            capsule.style.cssText = `
+                position: absolute;
+                top: max(env(safe-area-inset-top, 0px), 14px);
+                left: 50%;
+                transform: translateX(-50%);
+                padding: 6px 14px;
+                border-radius: 999px;
+                background: rgba(255, 255, 255, 0.04);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                color: rgba(255, 255, 255, 0.28);
+                font-size: 11px;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                pointer-events: auto;
+                cursor: pointer;
+                transition: opacity 0.5s, background 0.2s, color 0.2s;
+                opacity: 0.85;
+                white-space: nowrap;
+                user-select: none;
+                -webkit-user-select: none;
+                z-index: 10;
+            `;
+            capsule.innerHTML = '🌙 息屏盲操中 · 双击此处或三指轻点退出';
+
+            let lastCapsuleTapTime = 0;
+            let lastTapEventTime = 0;
+            const handleCapsuleExit = (e) => {
+                if (e.cancelable) e.preventDefault();
+                e.stopPropagation();
+                const now = Date.now();
+                // 忽略 touch 引起的合成 click (在 450ms 之内的 click 事件丢弃)
+                if (e.type === 'click' && now - lastTapEventTime < 450) {
+                    return;
+                }
+                lastTapEventTime = now;
+
+                if (now - lastCapsuleTapTime < 450) {
+                    this.exitBlackoutMode();
+                    lastCapsuleTapTime = 0;
+                } else {
+                    lastCapsuleTapTime = now;
+                    capsule.style.opacity = '0.9';
+                    capsule.style.color = '#ffffff';
+                    capsule.style.background = 'rgba(255, 255, 255, 0.16)';
+                    setTimeout(() => {
+                        if (this.isBlackoutMode) {
+                            capsule.style.opacity = '0.15';
+                            capsule.style.color = 'rgba(255, 255, 255, 0.28)';
+                            capsule.style.background = 'rgba(255, 255, 255, 0.04)';
+                        }
+                    }, 1200);
+                }
+            };
+            capsule.addEventListener('touchstart', (e) => {
+                if (e.cancelable) e.preventDefault();
+                e.stopPropagation();
+            }, { passive: false });
+            capsule.addEventListener('touchmove', (e) => {
+                if (e.cancelable) e.preventDefault();
+                e.stopPropagation();
+            }, { passive: false });
+            capsule.addEventListener('touchend', handleCapsuleExit, { passive: false });
+            capsule.addEventListener('click', handleCapsuleExit);
+
+            // 首次进入提示气泡 (2秒后完全隐匿为纯黑)
+            const toast = document.createElement('div');
+            toast.id = 'airmouse-blackout-toast';
+            toast.style.cssText = `
+                position: absolute;
+                top: 45%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                padding: 12px 20px;
+                border-radius: 14px;
+                background: rgba(22, 22, 22, 0.92);
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                color: #ffffff;
+                font-size: 13px;
+                text-align: center;
+                pointer-events: none;
+                transition: opacity 0.8s;
+                opacity: 0;
+                line-height: 1.6;
+                white-space: nowrap;
+                z-index: 10;
+            `;
+            toast.innerHTML = '🌙 <b>已开启 OLED 息屏盲操</b><br><span style="font-size:11px; color:#888;">全屏为触控板 · 双击顶部或三指轻点退出</span>';
+
+            overlay.appendChild(capsule);
+            overlay.appendChild(toast);
+            document.body.appendChild(overlay);
+
+            this._bindEvents(overlay);
+        }
+        this.blackoutOverlay = overlay;
+    }
+
+    enterBlackoutMode() {
+        if (!this.blackoutOverlay) this._initBlackoutOverlay();
+        this.isBlackoutMode = true;
+        this.blackoutOverlay.style.display = 'block';
+        this.haptics.trigger('click');
+        if (navigator.vibrate) navigator.vibrate([15, 40, 15]);
+
+        if (window.requestAirMouseWakeLock) {
+            window.requestAirMouseWakeLock();
+        }
+
+        try {
+            if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            } else if (document.documentElement.webkitRequestFullscreen && !document.webkitFullscreenElement) {
+                document.documentElement.webkitRequestFullscreen();
+            }
+        } catch (e) {}
+
+        const toast = document.getElementById('airmouse-blackout-toast');
+        const capsule = document.getElementById('airmouse-blackout-capsule');
+        if (toast) {
+            toast.style.opacity = '1';
+            setTimeout(() => {
+                toast.style.opacity = '0';
+            }, 2000);
+        }
+        if (capsule) {
+            capsule.style.opacity = '0.85';
+            setTimeout(() => {
+                if (this.isBlackoutMode) capsule.style.opacity = '0.15';
+            }, 3000);
+        }
+    }
+
+    exitBlackoutMode() {
+        if (!this.isBlackoutMode) return;
+        this.isBlackoutMode = false;
+        if (this.blackoutOverlay) {
+            this.blackoutOverlay.style.display = 'none';
+        }
+        this.haptics.trigger('right_click');
+        if (navigator.vibrate) navigator.vibrate(25);
+    }
+
+    toggleBlackoutMode() {
+        if (this.isBlackoutMode) {
+            this.exitBlackoutMode();
+        } else {
+            this.enterBlackoutMode();
+        }
     }
 
     _stopInertia() {
@@ -183,6 +368,7 @@ class Touchpad {
     }
 
     _showGestureToast(msg) {
+        if (this.isBlackoutMode) return;
         if (!this.pad) return;
         let toast = this.pad.querySelector('.touchpad-toast');
         if (!toast) {
@@ -701,6 +887,10 @@ class Touchpad {
                         }, 180);
                     }
                 } else if (this.maxTCount === 3) {
+                    if (this.isBlackoutMode) {
+                        this.exitBlackoutMode();
+                        return;
+                    }
                     this.socket.emit('click', { button: 'middle' });
                     this.haptics.trigger('click');
                 } else if (this.maxTCount >= 4 && !this.fourFingerTriggered) {
@@ -769,17 +959,18 @@ class Touchpad {
 window.TouchpadModule = Touchpad;
 
 // --- 自动保持手机屏幕常亮 (Wake Lock) ---
-if ('wakeLock' in navigator) {
-    let wakeLock = null;
-    const requestWakeLock = async () => {
+let airMouseWakeLock = null;
+async function requestAirMouseWakeLock() {
+    if ('wakeLock' in navigator) {
         try {
             if (document.visibilityState === 'visible') {
-                wakeLock = await navigator.wakeLock.request('screen');
+                airMouseWakeLock = await navigator.wakeLock.request('screen');
             }
         } catch (e) {}
-    };
-    requestWakeLock();
-    document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') requestWakeLock();
-    });
+    }
 }
+window.requestAirMouseWakeLock = requestAirMouseWakeLock;
+requestAirMouseWakeLock();
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') requestAirMouseWakeLock();
+});

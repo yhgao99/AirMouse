@@ -55,7 +55,7 @@
             flex-shrink: 0;
         }
 
-        .back-btn, #rotate-screen-btn, #settings-btn {
+        .back-btn, #rotate-screen-btn, #blackout-btn, #settings-btn {
             width: 32px;
             height: 32px;
             display: flex;
@@ -68,7 +68,7 @@
             padding: 0;
         }
 
-        .back-btn svg, #rotate-screen-btn svg, #settings-btn svg {
+        .back-btn svg, #rotate-screen-btn svg, #blackout-btn svg, #settings-btn svg {
             fill: #fff;
             width: 17px;
             height: 17px;
@@ -475,6 +475,7 @@
         }
 
         body.layout-landscape #rotate-screen-btn,
+        body.layout-landscape #blackout-btn,
         body.layout-landscape #settings-btn {
             width: 32px !important;
             height: 32px !important;
@@ -893,6 +894,11 @@
             <button id="rotate-screen-btn" class="h-btn" data-action="rotate" title="全屏/横屏模式">
                 <svg id="fs-icon" viewBox="0 0 24 24" style="width:18px; height:18px; fill:#fff;">
                     <path id="fs-icon-path" d="M5,5H10V7H7V10H5V5M14,5H19V10H17V7H14V5M17,14H19V19H14V17H17V14M10,17V19H5V14H7V17H10Z" />
+                </svg>
+            </button>
+            <button id="blackout-btn" class="h-btn" data-action="blackout" title="息屏盲操">
+                <svg viewBox="0 0 24 24" style="width:16px; height:16px; fill:#fff;">
+                    <path d="M12.3,2A10,10 0 0,0 12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12C22,10.84 21.79,9.72 21.41,8.68C20.61,10.66 18.66,12.08 16.38,12.08C13.43,12.08 11.04,9.69 11.04,6.74C11.04,4.46 12.46,2.51 14.44,1.71C13.75,1.89 13.04,2 12.3,2Z" />
                 </svg>
             </button>
             <button id="settings-btn" class="h-btn" data-action="settings" title="偏好设置">
@@ -1452,6 +1458,8 @@
                 }
             } else if (action === 'rotate') {
                 toggleScreenOrientation();
+            } else if (action === 'blackout') {
+                touchpad && touchpad.toggleBlackoutMode();
             } else if (action === 'undo') {
                 ctrlZ();
             } else if (action === 'select_all') {
