@@ -55,19 +55,7 @@
             flex-shrink: 0;
         }
 
-        .back-btn {
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            background: #1a1a1a;
-            margin-right: 0;
-            flex-shrink: 0;
-        }
-
-        #rotate-screen-btn {
+        .back-btn, #rotate-screen-btn, #settings-btn {
             width: 32px;
             height: 32px;
             display: flex;
@@ -77,9 +65,10 @@
             background: #1a1a1a;
             border: none;
             flex-shrink: 0;
+            padding: 0;
         }
 
-        .back-btn svg, #rotate-screen-btn svg {
+        .back-btn svg, #rotate-screen-btn svg, #settings-btn svg {
             fill: #fff;
             width: 17px;
             height: 17px;
@@ -227,10 +216,10 @@
             gap: 10px;
         }
 
+        .sens-ctrl,
         .delay-ctrl {
             flex: 1.2;
             margin: 0;
-            /* 重置 margin */
             background: var(--card-bg);
             padding: 6px 12px;
             border-radius: 10px;
@@ -241,21 +230,25 @@
             max-height: 36px;
         }
 
+        .sens-label,
         .delay-label {
             font-size: 11px;
             white-space: nowrap;
             color: var(--text-secondary);
         }
 
+        .sens-slider,
         .delay-slider {
             flex: 1;
             height: 4px;
         }
 
+        .sens-value,
         .delay-value {
             font-size: 11px;
-            min-width: 30px;
+            min-width: 32px;
             text-align: right;
+            font-variant-numeric: tabular-nums;
         }
 
         .mode-selector {
@@ -481,7 +474,8 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
         }
 
-        body.layout-landscape #rotate-screen-btn {
+        body.layout-landscape #rotate-screen-btn,
+        body.layout-landscape #settings-btn {
             width: 32px !important;
             height: 32px !important;
             margin: 0 !important;
@@ -539,11 +533,11 @@
             margin-left: 1px !important;
         }
 
-        /* 3. 顶部左侧模式切换器：与返回按钮同一水平基线 (top: 7px, height: 32px) */
+        /* 3. 顶部左侧模式切换器：与返回/设置按钮同一水平基线 (top: 7px, height: 32px) */
         body.layout-landscape .toolbar-area {
             position: fixed !important;
             top: 7px !important;
-            left: calc(max(env(safe-area-inset-left, 0px), 18px) + 74px) !important;
+            left: calc(max(env(safe-area-inset-left, 0px), 18px) + 110px) !important;
             height: 32px !important;
             margin: 0 !important;
             padding: 0 !important;
@@ -557,7 +551,7 @@
         }
 
         body.layout-landscape.virtual-landscape .toolbar-area {
-            left: calc(max(env(safe-area-inset-top, 0px), 18px) + 74px) !important;
+            left: calc(max(env(safe-area-inset-top, 0px), 18px) + 110px) !important;
         }
 
         body.layout-landscape .toolbar-top {
@@ -570,8 +564,9 @@
             width: auto !important;
         }
 
+        body.layout-landscape .sens-ctrl,
         body.layout-landscape .delay-ctrl {
-            display: none !important; /* 横屏隐藏等待滑块，保持清爽 */
+            display: none !important; /* 横屏隐藏底部滑块，保持全屏触控板纯净 */
         }
 
         body.layout-landscape .mode-selector {
@@ -725,6 +720,157 @@
                 opacity: 0;
             }
         }
+
+        /* 偏好设置毛玻璃浮层弹窗 */
+        .settings-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+
+        .settings-modal.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .settings-card {
+            width: min(340px, 88vw);
+            background: rgba(26, 26, 30, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 18px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+            padding: 16px 18px;
+            box-sizing: border-box;
+            transform: scale(0.92);
+            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .settings-modal.active .settings-card {
+            transform: scale(1);
+        }
+
+        .settings-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .settings-title {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .settings-title svg {
+            width: 17px;
+            height: 17px;
+            fill: var(--primary);
+        }
+
+        .settings-close {
+            width: 28px;
+            height: 28px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .settings-close:active {
+            background: rgba(255, 255, 255, 0.18);
+        }
+
+        .settings-close svg {
+            width: 15px;
+            height: 15px;
+            fill: #aaa;
+        }
+
+        .settings-body {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .setting-item {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .setting-label-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .setting-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: #ccc;
+        }
+
+        .setting-val-badge {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--primary);
+            background: rgba(0, 122, 255, 0.15);
+            padding: 2px 7px;
+            border-radius: 6px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .setting-slider-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .slider-min-text,
+        .slider-max-text {
+            font-size: 10px;
+            color: var(--text-secondary);
+            min-width: 24px;
+        }
+
+        .slider-max-text {
+            text-align: right;
+        }
+
+        .setting-slider {
+            flex: 1;
+            height: 5px;
+            border-radius: 3px;
+            outline: none;
+            accent-color: var(--primary);
+        }
+
+        .settings-tip {
+            font-size: 10px;
+            color: #777;
+            text-align: center;
+            margin-top: 4px;
+        }
     </style>
 </head>
 
@@ -739,6 +885,11 @@
             <button id="rotate-screen-btn" class="h-btn" data-action="rotate" title="全屏/横屏模式">
                 <svg id="fs-icon" viewBox="0 0 24 24" style="width:18px; height:18px; fill:#fff;">
                     <path id="fs-icon-path" d="M5,5H10V7H7V10H5V5M14,5H19V10H17V7H14V5M17,14H19V19H14V17H17V14M10,17V19H5V14H7V17H10Z" />
+                </svg>
+            </button>
+            <button id="settings-btn" class="h-btn" data-action="settings" title="偏好设置">
+                <svg viewBox="0 0 24 24" style="width:16px; height:16px; fill:#fff;">
+                    <path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/>
                 </svg>
             </button>
         </div>
@@ -816,15 +967,64 @@
 
     <div class="toolbar-area">
         <div class="toolbar-top">
-            <div class="delay-ctrl" id="delay-box">
-                <span class="delay-label">上屏等待</span>
-                <input type="range" id="delay-slider" class="delay-slider" min="500" max="4000" step="100" value="1500">
-                <span class="delay-value" id="delay-val">1.5s</span>
+            <div class="sens-ctrl" id="sens-box">
+                <span class="sens-label">触控速度</span>
+                <input type="range" id="sens-slider" class="sens-slider" min="1.0" max="10.0" step="0.1" value="4.0">
+                <span class="sens-value" id="sens-val">4.0x</span>
             </div>
 
             <div class="mode-selector">
                 <div id="mode-realtime" class="mode-option active" data-action="mode" data-mode="realtime">实时</div>
                 <div id="mode-manual" class="mode-option" data-action="mode" data-mode="manual">分次</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 偏好设置毛玻璃浮层弹窗 -->
+    <div id="settings-modal" class="settings-modal" data-action="close_settings_mask">
+        <div class="settings-card" onclick="event.stopPropagation()">
+            <div class="settings-header">
+                <div class="settings-title">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/>
+                    </svg>
+                    <span>偏好设置</span>
+                </div>
+                <div class="settings-close" data-action="close_settings">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="settings-body">
+                <div class="setting-item">
+                    <div class="setting-label-row">
+                        <span class="setting-label">触控板灵敏度</span>
+                        <span id="modal-sens-val" class="setting-val-badge">4.0x</span>
+                    </div>
+                    <div class="setting-slider-row">
+                        <span class="slider-min-text">慢</span>
+                        <input type="range" id="modal-sens-slider" class="setting-slider" min="1.0" max="10.0" step="0.1" value="4.0">
+                        <span class="slider-max-text">快</span>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label-row">
+                        <span class="setting-label">实时上屏等待</span>
+                        <span id="modal-delay-val" class="setting-val-badge">1.5s</span>
+                    </div>
+                    <div class="setting-slider-row">
+                        <span class="slider-min-text">0.5s</span>
+                        <input type="range" id="modal-delay-slider" class="setting-slider" min="500" max="4000" step="100" value="1500">
+                        <span class="slider-max-text">4.0s</span>
+                    </div>
+                </div>
+
+                <div class="settings-tip">
+                    <span>💡 双击中间分割条可快速恢复 1:1 等比布局</span>
+                </div>
             </div>
         </div>
     </div>
@@ -855,22 +1055,62 @@
         const inputWindow = document.getElementById('input-window');
         const container = document.getElementById('container');
         const headerSendBtn = document.getElementById('header-send-btn');
-        const delaySlider = document.getElementById('delay-slider');
-        const delayValText = document.getElementById('delay-val');
-        const delayBox = document.getElementById('delay-box');
+        const sensSlider = document.getElementById('sens-slider');
+        const sensValText = document.getElementById('sens-val');
+        const modalSensSlider = document.getElementById('modal-sens-slider');
+        const modalSensValText = document.getElementById('modal-sens-val');
+        const modalDelaySlider = document.getElementById('modal-delay-slider');
+        const modalDelayValText = document.getElementById('modal-delay-val');
+        const settingsModal = document.getElementById('settings-modal');
 
         let inputTimer = null;
         let sensitivity = parseFloat(localStorage.getItem('mouse_sense')) || 4.0;
         let syncDelay = parseInt(localStorage.getItem('voice_sync_delay')) || 1500;
 
-        // 初始化滑块
-        delaySlider.value = syncDelay;
-        delayValText.innerText = (syncDelay / 1000).toFixed(1) + 's';
-        delaySlider.oninput = (e) => {
-            syncDelay = parseInt(e.target.value);
-            delayValText.innerText = (syncDelay / 1000).toFixed(1) + 's';
+        // 统一更新触控板灵敏度 (双向同步底部滑块与设置弹窗)
+        function updateSensitivity(newVal) {
+            sensitivity = Math.round(parseFloat(newVal) * 10) / 10;
+            localStorage.setItem('mouse_sense', sensitivity);
+            const valStr = sensitivity.toFixed(1) + 'x';
+            if (sensSlider) sensSlider.value = sensitivity;
+            if (sensValText) sensValText.innerText = valStr;
+            if (modalSensSlider) modalSensSlider.value = sensitivity;
+            if (modalSensValText) modalSensValText.innerText = valStr;
+        }
+
+        // 统一更新语音上屏延迟
+        function updateSyncDelay(newVal) {
+            syncDelay = parseInt(newVal);
             localStorage.setItem('voice_sync_delay', syncDelay);
-        };
+            const valStr = (syncDelay / 1000).toFixed(1) + 's';
+            if (modalDelaySlider) modalDelaySlider.value = syncDelay;
+            if (modalDelayValText) modalDelayValText.innerText = valStr;
+        }
+
+        if (sensSlider) sensSlider.oninput = (e) => updateSensitivity(e.target.value);
+        if (modalSensSlider) modalSensSlider.oninput = (e) => updateSensitivity(e.target.value);
+        if (modalDelaySlider) modalDelaySlider.oninput = (e) => updateSyncDelay(e.target.value);
+
+        updateSensitivity(sensitivity);
+        updateSyncDelay(syncDelay);
+
+        function toggleSettingsModal(open) {
+            v();
+            if (!settingsModal) return;
+            if (open === undefined) {
+                open = !settingsModal.classList.contains('active');
+            }
+            settingsModal.classList.toggle('active', open);
+        }
+
+        if (settingsModal) {
+            settingsModal.addEventListener('click', (e) => {
+                const closeBtn = e.target.closest('[data-action="close_settings"]');
+                if (closeBtn || e.target === settingsModal) {
+                    toggleSettingsModal(false);
+                }
+            });
+        }
 
         // 系统修饰键逻辑与受控主机系统判断
         // 服务端传递 server_os ('Darwin' / 'Windows' / 'Linux')
@@ -895,9 +1135,6 @@
             localStorage.setItem('voice_mode', mode);
             document.getElementById('mode-realtime').classList.toggle('active', mode === 'realtime');
             document.getElementById('mode-manual').classList.toggle('active', mode === 'manual');
-
-            // 仅在实时模式显示延迟调节
-            delayBox.style.display = mode === 'realtime' ? 'flex' : 'none';
 
             if (mode === 'realtime') {
                 container.classList.add('realtime-active');
@@ -1214,6 +1451,10 @@
                 clearText();
             } else if (action === 'send') {
                 sendFullText();
+            } else if (action === 'settings') {
+                toggleSettingsModal(true);
+            } else if (action === 'close_settings' || action === 'close_settings_mask') {
+                toggleSettingsModal(false);
             }
         }
 
