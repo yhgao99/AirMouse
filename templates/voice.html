@@ -43,6 +43,13 @@
             z-index: 10;
         }
 
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-right: 15px;
+        }
+
         .back-btn {
             width: 40px;
             height: 40px;
@@ -51,7 +58,18 @@
             justify-content: center;
             border-radius: 50%;
             background: #1a1a1a;
-            margin-right: 15px;
+            margin-right: 0;
+        }
+
+        #rotate-screen-btn {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: #1a1a1a;
+            border: none;
         }
 
         .back-btn svg {
@@ -299,7 +317,46 @@
             background: var(--primary);
         }
 
-        /* 横屏模式 (方案 3: 全屏大触控板 + 悬浮胶囊 HUD) */
+        /* 默认收起/展开控制按钮在竖屏下隐藏 */
+        #hud-collapse-btn,
+        #hud-expand-pill {
+            display: none;
+        }
+
+        .hud-expand-pill {
+            position: fixed;
+            top: 10px;
+            left: max(env(safe-area-inset-left, 0px), 24px);
+            height: 34px;
+            padding: 0 12px;
+            border-radius: 17px;
+            background: rgba(22, 22, 25, 0.88);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+            align-items: center;
+            gap: 6px;
+            z-index: 50;
+            cursor: pointer;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .hud-expand-pill svg {
+            width: 16px;
+            height: 16px;
+            fill: var(--primary);
+        }
+
+        .hud-expand-pill:active {
+            background: rgba(40, 40, 45, 0.95);
+            transform: scale(0.96);
+        }
+
+        /* 横屏模式 (方案 3: 全屏大触控板 + 极简可收起悬浮 HUD) */
         @media screen and (orientation: landscape) {
             html, body {
                 overflow: hidden !important;
@@ -335,14 +392,14 @@
                 display: none !important;
             }
 
-            /* 2. 顶部浮动条 */
+            /* 2. 顶部浮动条（左右边距适配大圆角屏，两端严格对齐） */
             .header {
                 position: fixed !important;
                 top: 0 !important;
                 left: 0 !important;
                 right: 0 !important;
-                height: 48px !important;
-                padding: 6px env(safe-area-inset-right, 12px) 6px env(safe-area-inset-left, 12px) !important;
+                height: 50px !important;
+                padding: 8px max(env(safe-area-inset-right, 0px), 24px) 8px max(env(safe-area-inset-left, 0px), 24px) !important;
                 background: transparent !important;
                 border-bottom: none !important;
                 backdrop-filter: none !important;
@@ -353,60 +410,104 @@
                 align-items: center !important;
                 justify-content: space-between !important;
                 box-sizing: border-box !important;
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s !important;
+            }
+
+            .header-left {
+                display: flex !important;
+                align-items: center !important;
+                gap: 6px !important;
+                pointer-events: auto !important;
             }
 
             .back-btn {
-                width: 36px !important;
-                height: 36px !important;
-                margin-right: 0 !important;
+                width: 34px !important;
+                height: 34px !important;
+                margin: 0 !important;
                 background: rgba(22, 22, 24, 0.85) !important;
                 backdrop-filter: blur(16px) !important;
                 -webkit-backdrop-filter: blur(16px) !important;
                 border: 1px solid rgba(255, 255, 255, 0.15) !important;
+                border-radius: 10px !important;
                 pointer-events: auto !important;
                 flex-shrink: 0 !important;
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+            }
+
+            #rotate-screen-btn {
+                width: 34px !important;
+                height: 34px !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border-radius: 10px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                flex-shrink: 0 !important;
             }
 
             .header .title {
                 display: none !important;
             }
 
-            /* 顶部右侧快捷按键 (撤销、全选、退格、回车) */
+            /* 顶部右侧快捷按键 (与左侧基线高度完全一致，34px) */
             .header-actions {
                 display: flex !important;
+                align-items: center !important;
                 gap: 5px !important;
                 pointer-events: auto !important;
                 flex-shrink: 0 !important;
+                margin: 0 !important;
             }
 
             .h-btn {
-                padding: 0 9px !important;
-                height: 36px !important;
+                padding: 0 8px !important;
+                height: 34px !important;
                 background: rgba(22, 22, 24, 0.85) !important;
                 backdrop-filter: blur(16px) !important;
                 -webkit-backdrop-filter: blur(16px) !important;
                 border: 1px solid rgba(255, 255, 255, 0.15) !important;
-                border-radius: 10px !important;
-                font-size: 12px !important;
+                border-radius: 9px !important;
+                font-size: 11px !important;
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
             }
 
-            /* 3. 顶部左侧伴随模式切换器 */
+            #hud-collapse-btn {
+                display: flex !important;
+                width: 34px !important;
+                height: 34px !important;
+                padding: 0 !important;
+                border-radius: 9px !important;
+                margin-left: 2px !important;
+            }
+
+            /* 3. 顶部左侧模式切换器：与返回按钮同一水平基线 (top: 8px, height: 34px) */
             .toolbar-area {
                 position: fixed !important;
-                top: 6px !important;
-                left: calc(env(safe-area-inset-left, 12px) + 48px) !important;
+                top: 8px !important;
+                left: calc(max(env(safe-area-inset-left, 0px), 24px) + 84px) !important;
+                height: 34px !important;
+                margin: 0 !important;
                 padding: 0 !important;
                 background: transparent !important;
                 z-index: 25 !important;
                 pointer-events: auto !important;
+                display: flex !important;
+                align-items: center !important;
                 width: auto !important;
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s !important;
             }
 
             .toolbar-top {
                 display: flex !important;
+                align-items: center !important;
                 gap: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                height: 34px !important;
                 width: auto !important;
             }
 
@@ -415,40 +516,46 @@
             }
 
             .mode-selector {
-                height: 36px !important;
-                width: 100px !important;
+                margin: 0 !important; /* 强制重置竖屏 margin，杜绝下沉错位 */
+                height: 34px !important;
+                width: 96px !important;
                 background: rgba(22, 22, 24, 0.85) !important;
                 backdrop-filter: blur(16px) !important;
                 -webkit-backdrop-filter: blur(16px) !important;
                 border: 1px solid rgba(255, 255, 255, 0.15) !important;
-                border-radius: 18px !important;
+                border-radius: 17px !important;
                 padding: 2px !important;
+                box-sizing: border-box !important;
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
             }
 
             .mode-option {
+                height: 28px !important;
+                line-height: 28px !important;
                 font-size: 11px !important;
-                border-radius: 15px !important;
+                border-radius: 14px !important;
+                padding: 0 !important;
             }
 
-            /* 4. 顶部中央悬浮语音听写胶囊 (Dynamic Island 风格) */
+            /* 4. 顶部中央悬浮语音听写胶囊 (top: 8px, height: 34px，与左右完美同一水平线) */
             .input-container {
                 position: fixed !important;
-                top: 6px !important;
+                top: 8px !important;
                 left: 50% !important;
                 transform: translateX(-50%) !important;
-                width: clamp(240px, 36vw, 400px) !important;
-                height: 38px !important;
+                width: clamp(220px, 34vw, 360px) !important;
+                height: 34px !important;
                 min-height: 0 !important;
                 padding: 0 !important;
+                margin: 0 !important;
                 z-index: 30 !important;
                 pointer-events: auto !important;
-                transition: height 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s !important;
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), height 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s !important;
             }
 
             /* 输入焦点激活时展开为多行卡片，方便查看长文字 */
             .input-container:focus-within {
-                height: 76px !important;
+                height: 72px !important;
             }
 
             #input-window {
@@ -458,13 +565,13 @@
                 backdrop-filter: blur(20px) !important;
                 -webkit-backdrop-filter: blur(20px) !important;
                 border: 1px solid rgba(255, 255, 255, 0.18) !important;
-                border-radius: 19px !important;
-                padding: 8px 74px 8px 14px !important;
+                border-radius: 17px !important;
+                padding: 6px 66px 6px 12px !important;
                 font-size: 13px !important;
                 line-height: 20px !important;
                 box-sizing: border-box !important;
                 color: #fff !important;
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45) !important;
                 transition: border-radius 0.25s, border-color 0.2s !important;
                 white-space: nowrap !important;
                 overflow-x: auto !important;
@@ -482,22 +589,42 @@
             .box-actions {
                 position: absolute !important;
                 right: 3px !important;
-                bottom: 3px !important;
-                top: auto !important;
+                top: 50% !important;
+                transform: translateY(-50%) !important;
+                bottom: auto !important;
                 display: flex !important;
-                gap: 4px !important;
+                gap: 3px !important;
                 z-index: 3 !important;
             }
 
+            .input-container:focus-within .box-actions {
+                top: auto !important;
+                bottom: 4px !important;
+                transform: none !important;
+            }
+
             .box-btn {
-                width: 32px !important;
-                height: 32px !important;
-                border-radius: 16px !important;
+                width: 28px !important;
+                height: 28px !important;
+                border-radius: 14px !important;
             }
 
             .box-btn svg {
-                width: 16px !important;
-                height: 16px !important;
+                width: 14px !important;
+                height: 14px !important;
+            }
+
+            /* 5. 一键收起状态 (全屏 100% 纯净大触控板，仅左上角留微型展开图标) */
+            body.landscape-collapsed .header,
+            body.landscape-collapsed .input-container,
+            body.landscape-collapsed .toolbar-area {
+                transform: translateY(-60px) !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+            }
+
+            body.landscape-collapsed #hud-expand-pill {
+                display: flex !important;
             }
         }
 
@@ -551,10 +678,17 @@
 
 <body onclick="initAudio()">
     <div class="header">
-        <div class="back-btn" onclick="v(); window.location.href='/'">
-            <svg viewBox="0 0 24 24">
-                <path d="M15.41,16.58L10.83,12L15.41,7.41L14,6L8,12L14,18L15.41,16.58Z" />
-            </svg>
+        <div class="header-left">
+            <div class="back-btn" onclick="v(); window.location.href='/'">
+                <svg viewBox="0 0 24 24">
+                    <path d="M15.41,16.58L10.83,12L15.41,7.41L14,6L8,12L14,18L15.41,16.58Z" />
+                </svg>
+            </div>
+            <button id="rotate-screen-btn" class="h-btn" onclick="v(); toggleScreenOrientation()" title="切换横竖屏/全屏">
+                <svg viewBox="0 0 24 24" style="width:16px; height:16px; fill:#fff;">
+                    <path d="M16.48,2.52C19.75,4.07 22.09,7.24 22.45,11H23.95C23.44,4.84 18.29,0 12,0L11.34,0.03L15.15,3.84L16.48,2.52M12,24C18.29,24 23.44,19.16 23.95,13H22.45C22.09,16.76 19.75,19.93 16.48,21.48L15.15,20.16L11.34,23.97L12,24M7.52,21.48C4.25,19.93 1.91,16.76 1.55,13H0.05C0.56,19.16 5.71,24 12,24L12.66,23.97L8.85,20.16L7.52,21.48M12,0C5.71,0 0.56,4.84 0.05,11H1.55C1.91,7.24 4.25,4.07 7.52,2.52L8.85,3.84L12.66,0.03L12,0Z"/>
+                </svg>
+            </button>
         </div>
         <div class="title"></div>
         <div class="header-actions">
@@ -587,9 +721,20 @@
                     <path d="M19,7V11H5.83L9.41,7.41L8,6L2,12L8,18L9.41,16.59L5.83,13H21V7H19Z" />
                 </svg>
             </button>
-
-
+            <button id="hud-collapse-btn" class="h-btn" onclick="v(); toggleLandscapeHud(true)" title="收起工具栏">
+                <svg viewBox="0 0 24 24" style="width:16px; height:16px; fill:#aaa;">
+                    <path d="M7.41,15.41L12,10.83L16.59,15.41L18,14L12,8L6,14L7.41,15.41Z"/>
+                </svg>
+            </button>
         </div>
+    </div>
+
+    <!-- 悬浮微型展开胶囊（横屏收起后显示） -->
+    <div id="hud-expand-pill" class="hud-expand-pill" onclick="v(); toggleLandscapeHud(false)">
+        <svg viewBox="0 0 24 24">
+            <path d="M12,2A3,3 0 0,1 15,5V11A3,3 0 0,1 12,14A3,3 0 0,1 9,11V5A3,3 0 0,1 12,2M19,11C19,14.53 16.39,17.44 13,17.93V21H11V17.93C7.61,17.44 5,14.53 5,11H7A5,5 0 0,0 12,16A5,5 0 0,0 17,11H19Z"/>
+        </svg>
+        <span>展开</span>
     </div>
 
     <div class="main-content">
@@ -844,6 +989,54 @@
 
         const savedRatio = parseFloat(localStorage.getItem('voice_layout_ratio')) || 0.45;
         applyLayoutRatio(savedRatio);
+
+        // --- 输入焦点自动失焦（触碰触控板或外部时立即收起键盘和卡片） ---
+        function dismissInputFocus() {
+            if (document.activeElement && (document.activeElement === inputWindow || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'INPUT')) {
+                document.activeElement.blur();
+            }
+        }
+        padEl.addEventListener('touchstart', dismissInputFocus, { passive: true });
+        padEl.addEventListener('mousedown', dismissInputFocus);
+        document.addEventListener('touchstart', (e) => {
+            if (!e.target.closest('#container') && !e.target.closest('.box-actions')) {
+                dismissInputFocus();
+            }
+        }, { passive: true });
+
+        // --- 横屏控制栏展开/收起切换 ---
+        function toggleLandscapeHud(collapse) {
+            document.body.classList.toggle('landscape-collapsed', collapse);
+            localStorage.setItem('voice_landscape_collapsed', collapse ? 'true' : 'false');
+        }
+        if (localStorage.getItem('voice_landscape_collapsed') === 'true') {
+            document.body.classList.add('landscape-collapsed');
+        }
+
+        // --- 屏幕旋转 / 全屏切换 ---
+        async function toggleScreenOrientation() {
+            v();
+            try {
+                if (screen.orientation && screen.orientation.lock) {
+                    const isLandscape = window.innerWidth > window.innerHeight;
+                    await screen.orientation.lock(isLandscape ? 'portrait' : 'landscape').catch(() => {});
+                } else if (!document.fullscreenElement) {
+                    if (document.documentElement.requestFullscreen) {
+                        await document.documentElement.requestFullscreen();
+                    } else if (document.documentElement.webkitRequestFullscreen) {
+                        await document.documentElement.webkitRequestFullscreen();
+                    }
+                } else {
+                    if (document.exitFullscreen) {
+                        await document.exitFullscreen();
+                    } else if (document.webkitExitFullscreen) {
+                        await document.webkitExitFullscreen();
+                    }
+                }
+            } catch (e) {
+                console.log('Orientation toggle:', e);
+            }
+        }
 
         // 双击分割条快速恢复 1:1 等比
         resizeDivider.addEventListener('dblclick', () => {
