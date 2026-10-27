@@ -79,6 +79,7 @@ class Touchpad {
 
         this.socket = socket;
         this.getSensitivity = options.getSensitivity || (() => 4.0);
+        this.transformDelta = options.transformDelta || ((dx, dy) => ({ dx, dy }));
         this.haptics = new HapticFeedback();
 
         this.lx = 0; this.ly = 0; // last x, y
@@ -334,8 +335,11 @@ class Touchpad {
                 this.fourFingerStart = { x: cx, y: cy, time: Date.now() };
             }
             if (!this.fourFingerTriggered) {
-                const dx = cx - this.fourFingerStart.x;
-                const dy = cy - this.fourFingerStart.y;
+                const rawDx = cx - this.fourFingerStart.x;
+                const rawDy = cy - this.fourFingerStart.y;
+                const transformed = this.transformDelta(rawDx, rawDy);
+                const dx = transformed.dx;
+                const dy = transformed.dy;
                 const dist = Math.hypot(dx, dy);
 
                 // 1. 优先判定四指张开 (Spread) 与 捏合 (Pinch)
@@ -420,8 +424,9 @@ class Touchpad {
         // --- 三指拖拽专用光标移动（完全无 300ms 延迟阻滞，丝滑跟随） ---
         if (this.tCount === 3) {
             if (this.drag) {
-                const rawDx = cx - this.lx;
-                const rawDy = cy - this.ly;
+                const diff = this.transformDelta(cx - this.lx, cy - this.ly);
+                const rawDx = diff.dx;
+                const rawDy = diff.dy;
                 const dist = Math.hypot(rawDx, rawDy);
 
                 let accel = 1.0;
@@ -449,8 +454,9 @@ class Touchpad {
         // --- 单指光标移动（带非线性动态加速度与防误触缓冲） ---
         if (this.tCount === 1) {
             if (Date.now() - this.lastMultiTouchTime > 300) {
-                const rawDx = cx - this.lx;
-                const rawDy = cy - this.ly;
+                const diff = this.transformDelta(cx - this.lx, cy - this.ly);
+                const rawDx = diff.dx;
+                const rawDy = diff.dy;
                 const dist = Math.hypot(rawDx, rawDy);
 
                 // 非线性动态加速度曲线
@@ -588,8 +594,9 @@ class Touchpad {
             this.scrollHistory.push({ x: cx, y: cy, time: now });
             if (this.scrollHistory.length > 8) this.scrollHistory.shift();
 
-            const rawDx = cx - this.lx;
-            const rawDy = cy - this.ly;
+            const scrollDiff = this.transformDelta(cx - this.lx, cy - this.ly);
+            const rawDx = scrollDiff.dx;
+            const rawDy = scrollDiff.dy;
 
             this.scrollAccumX += rawDx;
             this.scrollAccumY += rawDy;
@@ -645,8 +652,11 @@ class Touchpad {
             const pLast = this.scrollHistory[this.scrollHistory.length - 1];
             const dt = pLast.time - pFirst.time;
             if (dt > 15 && dt < 180) {
-                const vx = (pLast.x - pFirst.x) / dt;
-                const vy = (pLast.y - pFirst.y) / dt;
+                const rawVx = (pLast.x - pFirst.x) / dt;
+                const rawVy = (pLast.y - pFirst.y) / dt;
+                const vDiff = this.transformDelta(rawVx, rawVy);
+                const vx = vDiff.dx;
+                const vy = vDiff.dy;
                 const speed = Math.hypot(vx, vy);
                 // 手指甩动初速度足够大时，触发平滑惯性滑冰
                 if (speed > 0.35) {
