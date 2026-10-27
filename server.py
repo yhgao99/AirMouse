@@ -362,59 +362,75 @@ def run_mac_menu_bar():
     global _mac_menu_target
     _mac_menu_target = target  # 保持全局引用防 Python 垃圾回收
 
-    menu = AppKit.NSMenu.alloc().init()
-
-    # 如果未开启辅助功能权限，显示警告操作项
-    if not is_trusted:
-        perm_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            '⚠️ 未开启辅助功能权限 (点击打开系统设置)', 'openAccessibilitySettings:', ''
-        )
-        perm_item.setTarget_(target)
-        menu.addItem_(perm_item)
-        menu.addItem_(AppKit.NSMenuItem.separatorItem())
-
-    # 1. 状态与 IP 显示
+    # 预先构建菜单项
     status_header = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
         f'🟢 AirMouse 运行中 (端口: {PORT})', None, ''
     )
     status_header.setEnabled_(False)
-    menu.addItem_(status_header)
 
     ip_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
         f'📍 本机 IP: {rec_ip}', None, ''
     )
     ip_item.setEnabled_(False)
-    menu.addItem_(ip_item)
 
-    menu.addItem_(AppKit.NSMenuItem.separatorItem())
-
-    # 2. 核心快捷操作
     qr_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
         '📷 打开扫码连接页 (二维码)', 'openConnect:', ''
     )
     qr_item.setTarget_(target)
-    menu.addItem_(qr_item)
 
     home_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
         '🖥️ 打开电脑控制台', 'openHome:', ''
     )
     home_item.setTarget_(target)
-    menu.addItem_(home_item)
 
     copy_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
         '📋 复制手机扫码连接地址', 'copyUrl:', ''
     )
     copy_item.setTarget_(target)
-    menu.addItem_(copy_item)
 
-    menu.addItem_(AppKit.NSMenuItem.separatorItem())
-
-    # 3. 退出
     quit_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
         '🚪 退出 AirMouse', 'quitApp:', 'q'
     )
     quit_item.setTarget_(target)
-    menu.addItem_(quit_item)
+
+    menu = AppKit.NSMenu.alloc().init()
+
+    # 动态代理：每次用户点击菜单栏图标展开菜单时，实时检测辅助功能权限并刷新菜单
+    class MacMenuDelegate(AppKit.NSObject):
+        def menuNeedsUpdate_(self, m):
+            trusted_now = True
+            try:
+                import ApplicationServices
+                trusted_now = ApplicationServices.AXIsProcessTrusted()
+            except Exception:
+                pass
+
+            m.removeAllItems()
+
+            if not trusted_now:
+                warning_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+                    '⚠️ 辅助功能未生效 (点击去开启或重启应用)', 'openAccessibilitySettings:', ''
+                )
+                warning_item.setTarget_(target)
+                m.addItem_(warning_item)
+                m.addItem_(AppKit.NSMenuItem.separatorItem())
+
+            m.addItem_(status_header)
+            m.addItem_(ip_item)
+            m.addItem_(AppKit.NSMenuItem.separatorItem())
+            m.addItem_(qr_item)
+            m.addItem_(home_item)
+            m.addItem_(copy_item)
+            m.addItem_(AppKit.NSMenuItem.separatorItem())
+            m.addItem_(quit_item)
+
+    menu_delegate = MacMenuDelegate.alloc().init()
+    global _mac_menu_delegate
+    _mac_menu_delegate = menu_delegate
+    menu.setDelegate_(menu_delegate)
+
+    # 初始填充一次
+    menu_delegate.menuNeedsUpdate_(menu)
 
     status_item.setMenu_(menu)
     status_item.setHighlightMode_(True)
