@@ -326,7 +326,8 @@
         .hud-expand-pill {
             position: fixed;
             top: 10px;
-            left: max(env(safe-area-inset-left, 0px), 24px);
+            right: max(env(safe-area-inset-right, 0px), 24px);
+            left: auto;
             height: 34px;
             padding: 0 12px;
             border-radius: 17px;
@@ -358,7 +359,8 @@
 
         /* 横屏模式 (方案 3: 全屏大触控板 + 极简可收起悬浮 HUD) */
         @media screen and (orientation: landscape) {
-            html, body {
+            body:not(.is-portrait-forced) html,
+            body:not(.is-portrait-forced) {
                 overflow: hidden !important;
                 width: 100vw !important;
                 height: 100vh !important;
@@ -367,7 +369,7 @@
             }
 
             /* 1. 铺满全屏的超级触控板 */
-            #pad {
+            body:not(.is-portrait-forced) #pad {
                 position: fixed !important;
                 top: 0 !important;
                 left: 0 !important;
@@ -381,19 +383,19 @@
                 cursor: grab;
             }
 
-            .main-content {
+            body:not(.is-portrait-forced) .main-content {
                 position: static !important;
                 overflow: visible !important;
             }
 
             /* 隐藏竖屏分割条与提示 */
-            .resize-divider,
-            .hint {
+            body:not(.is-portrait-forced) .resize-divider,
+            body:not(.is-portrait-forced) .hint {
                 display: none !important;
             }
 
             /* 2. 顶部浮动条（左右边距适配大圆角屏，两端严格对齐） */
-            .header {
+            body:not(.is-portrait-forced) .header {
                 position: fixed !important;
                 top: 0 !important;
                 left: 0 !important;
@@ -413,14 +415,14 @@
                 transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s !important;
             }
 
-            .header-left {
+            body:not(.is-portrait-forced) .header-left {
                 display: flex !important;
                 align-items: center !important;
                 gap: 6px !important;
                 pointer-events: auto !important;
             }
 
-            .back-btn {
+            body:not(.is-portrait-forced) .back-btn {
                 width: 34px !important;
                 height: 34px !important;
                 margin: 0 !important;
@@ -434,7 +436,7 @@
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
             }
 
-            #rotate-screen-btn {
+            body:not(.is-portrait-forced) #rotate-screen-btn {
                 width: 34px !important;
                 height: 34px !important;
                 margin: 0 !important;
@@ -444,14 +446,17 @@
                 align-items: center !important;
                 justify-content: center !important;
                 flex-shrink: 0 !important;
+                background: rgba(22, 22, 24, 0.85) !important;
+                backdrop-filter: blur(16px) !important;
+                border: 1px solid rgba(255, 255, 255, 0.15) !important;
             }
 
-            .header .title {
+            body:not(.is-portrait-forced) .header .title {
                 display: none !important;
             }
 
             /* 顶部右侧快捷按键 (与左侧基线高度完全一致，34px) */
-            .header-actions {
+            body:not(.is-portrait-forced) .header-actions {
                 display: flex !important;
                 align-items: center !important;
                 gap: 5px !important;
@@ -460,7 +465,7 @@
                 margin: 0 !important;
             }
 
-            .h-btn {
+            body:not(.is-portrait-forced) .h-btn {
                 padding: 0 8px !important;
                 height: 34px !important;
                 background: rgba(22, 22, 24, 0.85) !important;
@@ -475,7 +480,7 @@
                 justify-content: center !important;
             }
 
-            #hud-collapse-btn {
+            body:not(.is-portrait-forced) #hud-collapse-btn {
                 display: flex !important;
                 width: 34px !important;
                 height: 34px !important;
@@ -485,7 +490,7 @@
             }
 
             /* 3. 顶部左侧模式切换器：与返回按钮同一水平基线 (top: 8px, height: 34px) */
-            .toolbar-area {
+            body:not(.is-portrait-forced) .toolbar-area {
                 position: fixed !important;
                 top: 8px !important;
                 left: calc(max(env(safe-area-inset-left, 0px), 24px) + 84px) !important;
@@ -501,7 +506,7 @@
                 transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s !important;
             }
 
-            .toolbar-top {
+            body:not(.is-portrait-forced) .toolbar-top {
                 display: flex !important;
                 align-items: center !important;
                 gap: 0 !important;
@@ -511,11 +516,11 @@
                 width: auto !important;
             }
 
-            .delay-ctrl {
+            body:not(.is-portrait-forced) .delay-ctrl {
                 display: none !important; /* 横屏隐藏等待滑块，保持清爽 */
             }
 
-            .mode-selector {
+            body:not(.is-portrait-forced) .mode-selector {
                 margin: 0 !important; /* 强制重置竖屏 margin，杜绝下沉错位 */
                 height: 34px !important;
                 width: 96px !important;
@@ -529,7 +534,7 @@
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
             }
 
-            .mode-option {
+            body:not(.is-portrait-forced) .mode-option {
                 height: 28px !important;
                 line-height: 28px !important;
                 font-size: 11px !important;
@@ -538,7 +543,7 @@
             }
 
             /* 4. 顶部中央悬浮语音听写胶囊 (top: 8px, height: 34px，与左右完美同一水平线) */
-            .input-container {
+            body:not(.is-portrait-forced) .input-container {
                 position: fixed !important;
                 top: 8px !important;
                 left: 50% !important;
@@ -554,11 +559,11 @@
             }
 
             /* 输入焦点激活时展开为多行卡片，方便查看长文字 */
-            .input-container:focus-within {
+            body:not(.is-portrait-forced) .input-container:focus-within {
                 height: 72px !important;
             }
 
-            #input-window {
+            body:not(.is-portrait-forced) #input-window {
                 width: 100% !important;
                 height: 100% !important;
                 background: rgba(18, 18, 20, 0.88) !important;
@@ -578,7 +583,7 @@
                 overflow-y: hidden !important;
             }
 
-            .input-container:focus-within #input-window {
+            body:not(.is-portrait-forced) .input-container:focus-within #input-window {
                 border-radius: 14px !important;
                 border-color: var(--primary) !important;
                 box-shadow: 0 6px 24px rgba(0, 122, 255, 0.35) !important;
@@ -586,7 +591,7 @@
                 overflow-y: auto !important;
             }
 
-            .box-actions {
+            body:not(.is-portrait-forced) .box-actions {
                 position: absolute !important;
                 right: 3px !important;
                 top: 50% !important;
@@ -597,33 +602,33 @@
                 z-index: 3 !important;
             }
 
-            .input-container:focus-within .box-actions {
+            body:not(.is-portrait-forced) .input-container:focus-within .box-actions {
                 top: auto !important;
                 bottom: 4px !important;
                 transform: none !important;
             }
 
-            .box-btn {
+            body:not(.is-portrait-forced) .box-btn {
                 width: 28px !important;
                 height: 28px !important;
                 border-radius: 14px !important;
             }
 
-            .box-btn svg {
+            body:not(.is-portrait-forced) .box-btn svg {
                 width: 14px !important;
                 height: 14px !important;
             }
 
-            /* 5. 一键收起状态 (全屏 100% 纯净大触控板，仅左上角留微型展开图标) */
-            body.landscape-collapsed .header,
-            body.landscape-collapsed .input-container,
-            body.landscape-collapsed .toolbar-area {
+            /* 5. 一键收起状态 (全屏 100% 纯净大触控板，仅右上角留微型展开图标) */
+            body.landscape-collapsed:not(.is-portrait-forced) .header,
+            body.landscape-collapsed:not(.is-portrait-forced) .input-container,
+            body.landscape-collapsed:not(.is-portrait-forced) .toolbar-area {
                 transform: translateY(-60px) !important;
                 opacity: 0 !important;
                 pointer-events: none !important;
             }
 
-            body.landscape-collapsed #hud-expand-pill {
+            body.landscape-collapsed:not(.is-portrait-forced) #hud-expand-pill {
                 display: flex !important;
             }
         }
@@ -1013,30 +1018,105 @@
             document.body.classList.add('landscape-collapsed');
         }
 
-        // --- 屏幕旋转 / 全屏切换 ---
-        async function toggleScreenOrientation() {
+        // --- 屏幕旋转 / 横竖屏切换（支持 iOS 与全平台纯 CSS 立即切换） ---
+        function isLandscapeActive() {
+            if (document.body.classList.contains('is-portrait-forced')) return false;
+            return (window.innerWidth > window.innerHeight);
+        }
+
+        function toggleScreenOrientation() {
             v();
-            try {
-                if (screen.orientation && screen.orientation.lock) {
-                    const isLandscape = window.innerWidth > window.innerHeight;
-                    await screen.orientation.lock(isLandscape ? 'portrait' : 'landscape').catch(() => {});
-                } else if (!document.fullscreenElement) {
-                    if (document.documentElement.requestFullscreen) {
-                        await document.documentElement.requestFullscreen();
-                    } else if (document.documentElement.webkitRequestFullscreen) {
-                        await document.documentElement.webkitRequestFullscreen();
-                    }
-                } else {
-                    if (document.exitFullscreen) {
-                        await document.exitFullscreen();
-                    } else if (document.webkitExitFullscreen) {
-                        await document.webkitExitFullscreen();
-                    }
-                }
-            } catch (e) {
-                console.log('Orientation toggle:', e);
+            const currentlyLandscape = isLandscapeActive();
+            if (currentlyLandscape) {
+                document.body.classList.add('is-portrait-forced');
+                localStorage.setItem('voice_forced_portrait', 'true');
+            } else {
+                document.body.classList.remove('is-portrait-forced');
+                localStorage.setItem('voice_forced_portrait', 'false');
+            }
+
+            // 尝试系统原生 orientation.lock（如果设备支持）
+            if (screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock(currentlyLandscape ? 'portrait' : 'landscape').catch(() => {});
             }
         }
+        if (localStorage.getItem('voice_forced_portrait') === 'true') {
+            document.body.classList.add('is-portrait-forced');
+        }
+
+        // --- 悬浮按钮“滑动穿透”防误触机制 ---
+        function initFloatingTouchPassthrough() {
+            const hudContainers = document.querySelectorAll('.header, .toolbar-area, #hud-expand-pill, .box-actions');
+            let startX = 0, startY = 0;
+            let lastX = 0, lastY = 0;
+            let isSliding = false;
+            let activeTouchId = null;
+
+            hudContainers.forEach(container => {
+                container.addEventListener('touchstart', (e) => {
+                    if (e.touches.length === 1) {
+                        const t = e.touches[0];
+                        activeTouchId = t.identifier;
+                        startX = t.clientX;
+                        startY = t.clientY;
+                        lastX = startX;
+                        lastY = startY;
+                        isSliding = false;
+                    }
+                }, { passive: true });
+
+                container.addEventListener('touchmove', (e) => {
+                    if (activeTouchId === null) return;
+                    let touch = null;
+                    for (let i = 0; i < e.touches.length; i++) {
+                        if (e.touches[i].identifier === activeTouchId) {
+                            touch = e.touches[i];
+                            break;
+                        }
+                    }
+                    if (!touch) return;
+
+                    const cx = touch.clientX;
+                    const cy = touch.clientY;
+                    const dist = Math.hypot(cx - startX, cy - startY);
+
+                    // 移动超过 7px，判定为滑行手势穿透，而非轻点按钮
+                    if (dist > 7) {
+                        if (!isSliding) {
+                            isSliding = true;
+                            dismissInputFocus();
+                        }
+                        const dx = cx - lastX;
+                        const dy = cy - lastY;
+                        // 实时将位移直接发送给服务端控制鼠标光标
+                        socket.emit('move', { dx: dx * sensitivity, dy: dy * sensitivity });
+                        lastX = cx;
+                        lastY = cy;
+                    }
+                }, { passive: true });
+
+                container.addEventListener('touchend', (e) => {
+                    if (isSliding) {
+                        // 属于滑行穿透手势，拦截该次松手触发的按钮点击
+                        const stopClick = (clickEvt) => {
+                            clickEvt.preventDefault();
+                            clickEvt.stopPropagation();
+                            window.removeEventListener('click', stopClick, true);
+                        };
+                        window.addEventListener('click', stopClick, true);
+                        setTimeout(() => window.removeEventListener('click', stopClick, true), 80);
+                    }
+                    activeTouchId = null;
+                    isSliding = false;
+                }, { passive: true });
+
+                container.addEventListener('touchcancel', () => {
+                    activeTouchId = null;
+                    isSliding = false;
+                }, { passive: true });
+            });
+        }
+        initFloatingTouchPassthrough();
 
         // 双击分割条快速恢复 1:1 等比
         resizeDivider.addEventListener('dblclick', () => {
