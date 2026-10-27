@@ -621,6 +621,9 @@
             white-space: nowrap !important;
             overflow-x: auto !important;
             overflow-y: hidden !important;
+            touch-action: none !important;
+            -webkit-user-select: none !important;
+            user-select: none !important;
         }
 
         body.layout-landscape .input-container:focus-within #input-window {
@@ -629,6 +632,9 @@
             box-shadow: 0 6px 24px rgba(0, 122, 255, 0.35) !important;
             white-space: normal !important;
             overflow-y: auto !important;
+            touch-action: auto !important;
+            -webkit-user-select: text !important;
+            user-select: text !important;
         }
 
         body.layout-landscape .box-actions {
@@ -1212,9 +1218,9 @@
             }
         }
 
-        // --- 悬浮按钮“滑动完全穿透 + 零误触”触摸手势管理引擎 ---
+        // --- 悬浮按钮与输入框“滑动完全穿透 + 零误触”触摸手势管理引擎 ---
         function initFloatingTouchPassthrough() {
-            const hudContainers = document.querySelectorAll('.header, .toolbar-area, #hud-expand-pill, .box-actions');
+            const hudContainers = document.querySelectorAll('.header, .toolbar-area, #hud-expand-pill, .input-container');
             let activeTouchId = null;
             let startX = 0, startY = 0;
             let lastX = 0, lastY = 0;
@@ -1232,7 +1238,15 @@
             hudContainers.forEach(container => {
                 container.addEventListener('touchstart', (e) => {
                     initAudio();
-                    if (e.target.closest('textarea, input[type="range"]')) return;
+
+                    // 竖屏且输入框已获得焦点时，允许在输入框内正常上下滑动查看长文本
+                    const isLandscape = document.body.classList.contains('layout-landscape');
+                    if (!isLandscape && document.activeElement === inputWindow && e.target.closest('#input-window')) {
+                        return;
+                    }
+
+                    // 允许滑块调节延迟
+                    if (e.target.closest('input[type="range"]')) return;
 
                     if (e.touches.length === 1) {
                         const t = e.touches[0];
@@ -1290,13 +1304,13 @@
                     const cy = touch.clientY;
                     const dist = Math.hypot(cx - startX, cy - startY);
 
-                    // 移动位移超过 6px，立刻判定为触控板滑行手势穿透，而非轻点按钮
+                    // 移动位移超过 6px，立刻判定为触控板滑行手势穿透，而非轻点按键或输入框聚焦
                     if (dist > 6 || isSliding) {
                         if (!isSliding) {
                             isSliding = true;
                             cleanupBS();
                             pendingAction = null; // 彻底取消按钮触发，杜绝误触！
-                            dismissInputFocus();
+                            dismissInputFocus(); // 立即失焦，避免唤起键盘或文本放大镜！
                         }
 
                         const rawDx = cx - lastX;
@@ -1327,7 +1341,7 @@
                     if (isSliding) {
                         cleanupBS();
                         pendingAction = null;
-                        if (e.cancelable) e.preventDefault();
+                        if (e.cancelable) e.preventDefault(); // 拦截滑动离开时的合成 click，彻底防止输入框获得焦点或弹出键盘！
                     } else {
                         // 属于静止状态下的真实短点 (Tap)
                         const hadRepeat = (bsRepeatInterval !== null);
@@ -1347,6 +1361,9 @@
                                 executeAction(action, el, mode);
                             }
                             if (e.cancelable) e.preventDefault();
+                        } else if (e.target.closest('#input-window')) {
+                            // 原地轻点输入框：正常触发聚焦与软键盘/语音呼出
+                            inputWindow.focus();
                         }
                     }
 
