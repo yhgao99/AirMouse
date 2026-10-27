@@ -299,50 +299,205 @@
             background: var(--primary);
         }
 
-        /* 横屏适配 */
+        /* 横屏模式 (方案 3: 全屏大触控板 + 悬浮胶囊 HUD) */
         @media screen and (orientation: landscape) {
-            .main-content {
-                flex-direction: row;
+            html, body {
+                overflow: hidden !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                margin: 0 !important;
+                padding: 0 !important;
             }
 
-            .input-container {
-                flex: 1;
-                min-width: 100px;
-                min-height: 0;
-            }
-
-            .resize-divider {
-                width: 10px;
-                height: auto;
-                cursor: col-resize;
-                margin: 8px 0;
-            }
-
-            .resize-handle {
-                width: 3px;
-                height: 36px;
-            }
-
+            /* 1. 铺满全屏的超级触控板 */
             #pad {
-                flex: 1;
-                margin: 2px 6px 2px 0;
-                min-width: 100px;
-                min-height: 0;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                margin: 0 !important;
+                border: none !important;
+                border-radius: 0 !important;
+                background: #080808 !important;
+                z-index: 1 !important;
+                cursor: grab;
             }
 
+            .main-content {
+                position: static !important;
+                overflow: visible !important;
+            }
+
+            /* 隐藏竖屏分割条与提示 */
+            .resize-divider,
+            .hint {
+                display: none !important;
+            }
+
+            /* 2. 顶部浮动条 */
+            .header {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                height: 48px !important;
+                padding: 6px env(safe-area-inset-right, 12px) 6px env(safe-area-inset-left, 12px) !important;
+                background: transparent !important;
+                border-bottom: none !important;
+                backdrop-filter: none !important;
+                -webkit-backdrop-filter: none !important;
+                z-index: 20 !important;
+                pointer-events: none !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+                box-sizing: border-box !important;
+            }
+
+            .back-btn {
+                width: 36px !important;
+                height: 36px !important;
+                margin-right: 0 !important;
+                background: rgba(22, 22, 24, 0.85) !important;
+                backdrop-filter: blur(16px) !important;
+                -webkit-backdrop-filter: blur(16px) !important;
+                border: 1px solid rgba(255, 255, 255, 0.15) !important;
+                pointer-events: auto !important;
+                flex-shrink: 0 !important;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+            }
+
+            .header .title {
+                display: none !important;
+            }
+
+            /* 顶部右侧快捷按键 (撤销、全选、退格、回车) */
+            .header-actions {
+                display: flex !important;
+                gap: 5px !important;
+                pointer-events: auto !important;
+                flex-shrink: 0 !important;
+            }
+
+            .h-btn {
+                padding: 0 9px !important;
+                height: 36px !important;
+                background: rgba(22, 22, 24, 0.85) !important;
+                backdrop-filter: blur(16px) !important;
+                -webkit-backdrop-filter: blur(16px) !important;
+                border: 1px solid rgba(255, 255, 255, 0.15) !important;
+                border-radius: 10px !important;
+                font-size: 12px !important;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+            }
+
+            /* 3. 顶部左侧伴随模式切换器 */
             .toolbar-area {
-                padding: 4px 10px calc(4px + env(safe-area-inset-bottom, 0px));
-                flex-direction: row;
-                align-items: center;
-                justify-content: space-between;
+                position: fixed !important;
+                top: 6px !important;
+                left: calc(env(safe-area-inset-left, 12px) + 48px) !important;
+                padding: 0 !important;
+                background: transparent !important;
+                z-index: 25 !important;
+                pointer-events: auto !important;
+                width: auto !important;
             }
 
             .toolbar-top {
-                width: 100%;
+                display: flex !important;
+                gap: 0 !important;
+                width: auto !important;
             }
 
-            .hint {
-                display: none !important;
+            .delay-ctrl {
+                display: none !important; /* 横屏隐藏等待滑块，保持清爽 */
+            }
+
+            .mode-selector {
+                height: 36px !important;
+                width: 100px !important;
+                background: rgba(22, 22, 24, 0.85) !important;
+                backdrop-filter: blur(16px) !important;
+                -webkit-backdrop-filter: blur(16px) !important;
+                border: 1px solid rgba(255, 255, 255, 0.15) !important;
+                border-radius: 18px !important;
+                padding: 2px !important;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+            }
+
+            .mode-option {
+                font-size: 11px !important;
+                border-radius: 15px !important;
+            }
+
+            /* 4. 顶部中央悬浮语音听写胶囊 (Dynamic Island 风格) */
+            .input-container {
+                position: fixed !important;
+                top: 6px !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
+                width: clamp(240px, 36vw, 400px) !important;
+                height: 38px !important;
+                min-height: 0 !important;
+                padding: 0 !important;
+                z-index: 30 !important;
+                pointer-events: auto !important;
+                transition: height 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s !important;
+            }
+
+            /* 输入焦点激活时展开为多行卡片，方便查看长文字 */
+            .input-container:focus-within {
+                height: 76px !important;
+            }
+
+            #input-window {
+                width: 100% !important;
+                height: 100% !important;
+                background: rgba(18, 18, 20, 0.88) !important;
+                backdrop-filter: blur(20px) !important;
+                -webkit-backdrop-filter: blur(20px) !important;
+                border: 1px solid rgba(255, 255, 255, 0.18) !important;
+                border-radius: 19px !important;
+                padding: 8px 74px 8px 14px !important;
+                font-size: 13px !important;
+                line-height: 20px !important;
+                box-sizing: border-box !important;
+                color: #fff !important;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
+                transition: border-radius 0.25s, border-color 0.2s !important;
+                white-space: nowrap !important;
+                overflow-x: auto !important;
+                overflow-y: hidden !important;
+            }
+
+            .input-container:focus-within #input-window {
+                border-radius: 14px !important;
+                border-color: var(--primary) !important;
+                box-shadow: 0 6px 24px rgba(0, 122, 255, 0.35) !important;
+                white-space: normal !important;
+                overflow-y: auto !important;
+            }
+
+            .box-actions {
+                position: absolute !important;
+                right: 3px !important;
+                bottom: 3px !important;
+                top: auto !important;
+                display: flex !important;
+                gap: 4px !important;
+                z-index: 3 !important;
+            }
+
+            .box-btn {
+                width: 32px !important;
+                height: 32px !important;
+                border-radius: 16px !important;
+            }
+
+            .box-btn svg {
+                width: 16px !important;
+                height: 16px !important;
             }
         }
 
