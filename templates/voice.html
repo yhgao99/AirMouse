@@ -786,24 +786,32 @@
         }
 
         .settings-close {
-            width: 28px;
-            height: 28px;
-            border-radius: 14px;
-            background: rgba(255, 255, 255, 0.08);
+            width: 34px;
+            height: 34px;
+            border-radius: 17px;
+            background: rgba(255, 255, 255, 0.1);
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            border: none;
+            outline: none;
+            padding: 0;
+            transition: background 0.15s, transform 0.15s;
         }
 
         .settings-close:active {
-            background: rgba(255, 255, 255, 0.18);
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(0.92);
         }
 
         .settings-close svg {
-            width: 15px;
-            height: 15px;
-            fill: #aaa;
+            width: 18px;
+            height: 18px;
+            fill: #eee;
+            pointer-events: none;
         }
 
         .settings-body {
@@ -981,8 +989,8 @@
     </div>
 
     <!-- 偏好设置毛玻璃浮层弹窗 -->
-    <div id="settings-modal" class="settings-modal" data-action="close_settings_mask">
-        <div class="settings-card" onclick="event.stopPropagation()">
+    <div id="settings-modal" class="settings-modal">
+        <div class="settings-card">
             <div class="settings-header">
                 <div class="settings-title">
                     <svg viewBox="0 0 24 24">
@@ -990,11 +998,11 @@
                     </svg>
                     <span>偏好设置</span>
                 </div>
-                <div class="settings-close" data-action="close_settings">
+                <button type="button" id="settings-close-btn" class="settings-close" data-action="close_settings" onclick="toggleSettingsModal(false)" title="关闭设置" aria-label="关闭设置">
                     <svg viewBox="0 0 24 24">
                         <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/>
                     </svg>
-                </div>
+                </button>
             </div>
 
             <div class="settings-body">
@@ -1107,6 +1115,23 @@
             settingsModal.addEventListener('click', (e) => {
                 const closeBtn = e.target.closest('[data-action="close_settings"]');
                 if (closeBtn || e.target === settingsModal) {
+                    toggleSettingsModal(false);
+                }
+            });
+
+            const closeBtn = document.getElementById('settings-close-btn');
+            if (closeBtn) {
+                closeBtn.addEventListener('touchend', (e) => {
+                    e.stopPropagation();
+                    if (e.cancelable) e.preventDefault();
+                    toggleSettingsModal(false);
+                });
+            }
+
+            settingsModal.addEventListener('touchend', (e) => {
+                if (e.target === settingsModal) {
+                    e.stopPropagation();
+                    if (e.cancelable) e.preventDefault();
                     toggleSettingsModal(false);
                 }
             });
