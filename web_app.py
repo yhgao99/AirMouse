@@ -135,7 +135,7 @@ def keyboard_page():
 
 @app.route('/v')
 def voice_page():
-    return render_template('voice.html')
+    return render_template('voice.html', server_os=platform.system())
 
 @app.route('/test')
 def vibe_test():
