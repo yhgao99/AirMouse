@@ -43,6 +43,15 @@ class HapticFeedback {
             // 释放拖拽：轻巧回弹
             if (navigator.vibrate) navigator.vibrate(8);
             this._clickSound(650, 0.03, 0.03);
+        } else if (type === 'zoom') {
+            // 缩放步进：极清脆微动 (6ms)
+            if (navigator.vibrate) navigator.vibrate(6);
+            this._clickSound(1100, 0.03, 0.02);
+        } else if (type === 'rotate') {
+            // 旋转完成：双音阶旋动提示
+            if (navigator.vibrate) navigator.vibrate([15, 25, 15]);
+            this._clickSound(700, 0.05, 0.03);
+            setTimeout(() => this._clickSound(900, 0.05, 0.03), 45);
         }
     }
 
@@ -85,10 +94,22 @@ class Touchpad {
         // 四指系统手势状态
         this.fourFingerStart = null;
         this.fourFingerTriggered = false;
+        this.fourFingerInitialRadius = 0;
         this._toastTimer = null;
         if (this.pad && getComputedStyle(this.pad).position === 'static') {
             this.pad.style.position = 'relative';
         }
+
+        // 双指高级手势状态 (缩放 Pinch, 旋转 Rotate, 智能缩放 Smart Zoom)
+        this.twoFingerState = null; // null | 'scroll' | 'pinch' | 'rotate'
+        this.twoFingerInitialDist = 0;
+        this.twoFingerLastDist = 0;
+        this.accumZoomDist = 0;
+        this.twoFingerInitialAngle = 0;
+        this.twoFingerLastAngle = 0;
+        this.accumRotateAngle = 0;
+        this.lastTwoFingerTapTime = 0;
+        this.twoFingerTapTimer = null;
 
         // 惯性滚动与速度追踪
         this.scrollAccumX = 0;
@@ -210,6 +231,16 @@ class Touchpad {
         return { x: sx / n, y: sy / n };
     }
 
+    _getAverageRadius(e, center) {
+        const touches = e.targetTouches;
+        if (!touches || touches.length === 0) return 0;
+        let sum = 0;
+        for (let i = 0; i < touches.length; i++) {
+            sum += Math.hypot(touches[i].clientX - center.x, touches[i].clientY - center.y);
+        }
+        return sum / touches.length;
+    }
+
     _handleTouchStart(e) {
         // 苹果触控板核心体验：只要手指重新接触屏幕，立刻截停任何正在进行的惯性滑行 (Catch-to-stop)
         this._stopInertia();
@@ -246,6 +277,22 @@ class Touchpad {
             }, 420);
         }
 
+        // 双指触控就绪（初始化双指距离与角度）
+        if (this.tCount === 2) {
+            const touches = e.targetTouches;
+            if (touches.length >= 2) {
+                const dx = touches[1].clientX - touches[0].clientX;
+                const dy = touches[1].clientY - touches[0].clientY;
+                this.twoFingerInitialDist = Math.hypot(dx, dy);
+                this.twoFingerLastDist = this.twoFingerInitialDist;
+                this.accumZoomDist = 0;
+                this.twoFingerInitialAngle = Math.atan2(dy, dx);
+                this.twoFingerLastAngle = this.twoFingerInitialAngle;
+                this.accumRotateAngle = 0;
+                this.twoFingerState = null;
+            }
+        }
+
         // 三指视觉反馈 (三指触控即进入就绪拖拽背景)
         if (this.tCount === 3) {
             this.pad.style.background = "#001a33";
@@ -255,6 +302,7 @@ class Touchpad {
         if (this.tCount === 4) {
             if (!this.fourFingerTriggered) {
                 this.fourFingerStart = { x: center.x, y: center.y, time: Date.now() };
+                this.fourFingerInitialRadius = this._getAverageRadius(e, center);
                 this.pad.style.background = "#0f172a";
                 this.haptics.trigger('click');
             }
@@ -275,7 +323,7 @@ class Touchpad {
             this.lastMultiTouchTime = Date.now();
         }
 
-        // --- 四指原生系统手势识别 (调度中心 / 桌面切换 / 显示桌面) ---
+        // --- 四指原生系统手势识别 (调度中心 / 桌面切换 / 显示桌面 / 启动台) ---
         // 关键保护：一旦本轮触摸曾达到 4 指 (maxTCount >= 4)，哪怕划动中偶有 1 指轻微离屏，也绝不降级为三指拖拽！
         if (this.maxTCount >= 4) {
             if (!this.fourFingerStart) {
@@ -286,7 +334,29 @@ class Touchpad {
                 const dy = cy - this.fourFingerStart.y;
                 const dist = Math.hypot(dx, dy);
 
-                // 划动超过 26px 灵敏响应
+                // 1. 优先判定四指张开 (Spread) 与 捏合 (Pinch)
+                const currentRadius = this._getAverageRadius(e, center);
+                const radiusDelta = currentRadius - (this.fourFingerInitialRadius || currentRadius);
+
+                if (Math.abs(radiusDelta) > 30 && Math.abs(radiusDelta) > dist * 0.75) {
+                    this.fourFingerTriggered = true;
+                    if (radiusDelta > 0) {
+                        // 四指张开：显示桌面 (Show Desktop)
+                        this.socket.emit('system_gesture', { action: 'show_desktop' });
+                        this.haptics.trigger('drag_lock');
+                        this._showGestureToast('🖥️ 显示桌面 (Show Desktop)');
+                    } else {
+                        // 四指捏合：启动台 (Launchpad)
+                        this.socket.emit('system_gesture', { action: 'launchpad' });
+                        this.haptics.trigger('drag_lock');
+                        this._showGestureToast('📱 启动台 (Launchpad)');
+                    }
+                    this.lx = cx;
+                    this.ly = cy;
+                    return;
+                }
+
+                // 2. 判定四指轻扫 (划动超过 26px 灵敏响应)
                 if (dist > 26) {
                     this.fourFingerTriggered = true;
                     if (Math.abs(dy) > Math.abs(dx)) {
@@ -395,10 +465,90 @@ class Touchpad {
             this.lx = cx;
             this.ly = cy;
 
-        // --- 双指 2D 全向物理平滑滚动 ---
+        // --- 双指原生高级手势 (缩放 Pinch / 旋转 Rotate / 2D 平滑滚动) ---
         } else if (this.tCount === 2) {
             this.lastMultiTouchTime = Date.now();
 
+            const touches = e.targetTouches;
+            if (touches.length >= 2) {
+                const tDx = touches[1].clientX - touches[0].clientX;
+                const tDy = touches[1].clientY - touches[0].clientY;
+                const currentDist = Math.hypot(tDx, tDy);
+                const currentAngle = Math.atan2(tDy, tDx);
+
+                let angleDiff = currentAngle - (this.twoFingerLastAngle || currentAngle);
+                while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+                while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+
+                const distDeltaFromStart = currentDist - (this.twoFingerInitialDist || currentDist);
+                const angleDeltaFromStart = currentAngle - (this.twoFingerInitialAngle || currentAngle);
+                let totalAngleFromStart = angleDeltaFromStart;
+                while (totalAngleFromStart > Math.PI) totalAngleFromStart -= 2 * Math.PI;
+                while (totalAngleFromStart < -Math.PI) totalAngleFromStart += 2 * Math.PI;
+
+                const centerMoveDist = Math.hypot(cx - this.sx, cy - this.sy);
+
+                // 状态未锁定时智能裁决：缩放 vs 旋转 vs 滚动
+                if (!this.twoFingerState) {
+                    if (Math.abs(distDeltaFromStart) > 16 && Math.abs(distDeltaFromStart) > centerMoveDist * 0.7) {
+                        this.twoFingerState = 'pinch';
+                        this.accumZoomDist = 0;
+                    } else if (Math.abs(totalAngleFromStart) > 0.38 && Math.abs(totalAngleFromStart) * currentDist > centerMoveDist * 0.8) {
+                        this.twoFingerState = 'rotate';
+                        this.accumRotateAngle = 0;
+                    } else if (centerMoveDist > 8) {
+                        this.twoFingerState = 'scroll';
+                    }
+                }
+
+                // 1. 双指缩放模式 (Pinch to Zoom)
+                if (this.twoFingerState === 'pinch') {
+                    const frameDistDelta = currentDist - (this.twoFingerLastDist || currentDist);
+                    this.accumZoomDist += frameDistDelta;
+
+                    const ZOOM_STEP = 16;
+                    if (Math.abs(this.accumZoomDist) >= ZOOM_STEP) {
+                        const steps = Math.trunc(this.accumZoomDist / ZOOM_STEP);
+                        this.accumZoomDist -= steps * ZOOM_STEP;
+                        const direction = steps > 0 ? 'in' : 'out';
+                        this.socket.emit('zoom', { direction, steps: Math.abs(steps) });
+                        this.haptics.trigger('zoom');
+                        this._showGestureToast(direction === 'in' ? '🔍 放大' : '🔍 缩小');
+                    }
+
+                    this.twoFingerLastDist = currentDist;
+                    this.twoFingerLastAngle = currentAngle;
+                    this.lx = cx;
+                    this.ly = cy;
+                    return;
+                }
+
+                // 2. 双指旋转模式 (Two-finger Rotate)
+                if (this.twoFingerState === 'rotate') {
+                    this.accumRotateAngle += angleDiff;
+
+                    // 旋转累积超过 35 度 (约 0.61 弧度) 触发旋转 90°
+                    const ROTATE_STEP = 0.61;
+                    if (Math.abs(this.accumRotateAngle) >= ROTATE_STEP) {
+                        const direction = this.accumRotateAngle > 0 ? 'right' : 'left';
+                        this.socket.emit('rotate', { direction });
+                        this.haptics.trigger('rotate');
+                        this._showGestureToast(direction === 'right' ? '↻ 顺时针旋转 90°' : '↺ 逆时针旋转 90°');
+                        this.accumRotateAngle = 0;
+                    }
+
+                    this.twoFingerLastDist = currentDist;
+                    this.twoFingerLastAngle = currentAngle;
+                    this.lx = cx;
+                    this.ly = cy;
+                    return;
+                }
+
+                this.twoFingerLastDist = currentDist;
+                this.twoFingerLastAngle = currentAngle;
+            }
+
+            // 3. 正常双指滚动模式 (2D 物理平滑滚动)
             const now = Date.now();
             this.scrollHistory.push({ x: cx, y: cy, time: now });
             if (this.scrollHistory.length > 8) this.scrollHistory.shift();
@@ -454,8 +604,8 @@ class Touchpad {
             this.longPressTimer = null;
         }
 
-        // --- 处理惯性滑行触发 ---
-        if (!this.isThreeFingerDrag && prevTCount === 2 && this.tCount === 0 && this.scrollHistory.length >= 2) {
+        // --- 处理惯性滑行触发 (缩放与旋转期间绝不触发滑行) ---
+        if (!this.isThreeFingerDrag && !this.twoFingerState && prevTCount === 2 && this.tCount === 0 && this.scrollHistory.length >= 2) {
             const pFirst = this.scrollHistory[0];
             const pLast = this.scrollHistory[this.scrollHistory.length - 1];
             const dt = pLast.time - pFirst.time;
@@ -481,13 +631,30 @@ class Touchpad {
                 this.haptics.trigger('drag_release');
             }
         } else if (this.tCount === 0) {
-            if (!this.hMove) {
+            if (!this.hMove && !this.twoFingerState) {
                 if (this.maxTCount === 1) {
                     this.socket.emit('click', { button: 'left' });
                     this.haptics.trigger('click');
                 } else if (this.maxTCount === 2) {
-                    this.socket.emit('click', { button: 'right' });
-                    this.haptics.trigger('right_click');
+                    // 双指智能双击 (Smart Zoom) 与 右键单击判定
+                    const now = Date.now();
+                    if (now - this.lastTwoFingerTapTime < 320) {
+                        if (this.twoFingerTapTimer) {
+                            clearTimeout(this.twoFingerTapTimer);
+                            this.twoFingerTapTimer = null;
+                        }
+                        this.socket.emit('smart_zoom');
+                        this.haptics.trigger('drag_lock');
+                        this._showGestureToast('🔍 智能缩放 (Smart Zoom)');
+                        this.lastTwoFingerTapTime = 0;
+                    } else {
+                        this.lastTwoFingerTapTime = now;
+                        this.twoFingerTapTimer = setTimeout(() => {
+                            this.socket.emit('click', { button: 'right' });
+                            this.haptics.trigger('right_click');
+                            this.twoFingerTapTimer = null;
+                        }, 180);
+                    }
                 } else if (this.maxTCount === 3) {
                     this.socket.emit('click', { button: 'middle' });
                     this.haptics.trigger('click');
@@ -505,6 +672,10 @@ class Touchpad {
             this.isThreeFingerDrag = false;
             this.fourFingerTriggered = false;
             this.fourFingerStart = null;
+            this.fourFingerInitialRadius = 0;
+            this.twoFingerState = null;
+            this.accumZoomDist = 0;
+            this.accumRotateAngle = 0;
             this.pad.style.background = "";
             if (window.stopScroll) window.stopScroll();
         }
@@ -516,6 +687,14 @@ class Touchpad {
         this.isThreeFingerDrag = false;
         this.fourFingerTriggered = false;
         this.fourFingerStart = null;
+        this.fourFingerInitialRadius = 0;
+        this.twoFingerState = null;
+        this.accumZoomDist = 0;
+        this.accumRotateAngle = 0;
+        if (this.twoFingerTapTimer) {
+            clearTimeout(this.twoFingerTapTimer);
+            this.twoFingerTapTimer = null;
+        }
         this.pad.style.background = "";
         this._stopInertia();
         if (this.drag) {
