@@ -1,25 +1,24 @@
 import platform
 import os
 import sys
+import socket
+import signal
 import subprocess
 import tempfile
 import threading
 import time
 import webbrowser
 
-# macOS 隐藏 Dock 图标逻辑
+# 优雅处理退出信号
+signal.signal(signal.SIGTERM, lambda s, f: sys.exit(0))
+
+# macOS 激活策略设置
 if platform.system() == 'Darwin':
     try:
-        from AppKit import NSBundle, NSApplication, NSApplicationActivationPolicyProhibited
-        bundle = NSBundle.mainBundle()
-        if bundle:
-            info = bundle.localizedInfoDictionary() or bundle.infoDictionary()
-            if info:
-                info['LSUIElement'] = '1'
-        # 立即锁定激活策略，防止 Dock 栏图标跳跃或显示
-        NSApplication.sharedApplication().setActivationPolicy_(NSApplicationActivationPolicyProhibited)
+        from AppKit import NSApplication, NSApplicationActivationPolicyRegular
+        # 允许作为原生应用在 Dock 栏显示图标，方便用户右键“退出”与管理
+        NSApplication.sharedApplication().setActivationPolicy_(NSApplicationActivationPolicyRegular)
     except Exception:
-        # 如果没有安装相应的库或环境不支持，静默失败
         pass
 
 from web_app import app, socketio, get_all_ip_addresses
@@ -591,7 +590,26 @@ def on_smart_zoom():
     else:
         keyboard_service.handle_combo({'keys': ['ctrl', '0']})
 
+def check_already_running():
+    """检测端口是否已被占用，防止重复启动崩溃并直接唤起扫码页"""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(0.3)
+            if s.connect_ex(('127.0.0.1', PORT)) == 0:
+                webbrowser.open(f'https://127.0.0.1:{PORT}/connect')
+                if platform.system() == 'Darwin':
+                    subprocess.run([
+                        'osascript', '-e',
+                        'display notification "AirMouse 已在后台运行，已为您打开扫码连接页" with title "AirMouse"'
+                    ], capture_output=True)
+                sys.exit(0)
+    except Exception:
+        pass
+
 if __name__ == '__main__':
+    if is_frozen():
+        check_already_running()
+
     use_tray = os.environ.get('AIRMOUSE_NO_TRAY') != '1' and platform.system() != 'Darwin'
     hide_console = os.environ.get('AIRMOUSE_SHOW_CONSOLE') != '1'
 
@@ -622,5 +640,21 @@ if __name__ == '__main__':
         print(f"  ➤  https://{ip}:{PORT}{tag}")
 
     print("═"*60 + "\n")
+
+    # App 模式下启动后自动打开扫码连接网页
+    def auto_open_browser():
+        time.sleep(1.0)
+        try:
+            webbrowser.open(f'https://127.0.0.1:{PORT}/connect')
+            if platform.system() == 'Darwin':
+                subprocess.run([
+                    'osascript', '-e',
+                    'display notification "服务已就绪，请使用手机扫描屏幕二维码连接" with title "AirMouse 已启动"'
+                ], capture_output=True)
+        except Exception as e:
+            print(f"auto_open_browser error: {e}")
+
+    if is_frozen() or os.environ.get('AIRMOUSE_AUTO_OPEN') == '1':
+        threading.Thread(target=auto_open_browser, daemon=True).start()
 
     start_server()

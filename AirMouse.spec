@@ -1,20 +1,33 @@
 # -*- mode: python ; coding: utf-8 -*-
-from PyInstaller.utils.hooks import collect_submodules
-from PyInstaller.utils.hooks import collect_all
+import sys
+import platform
 
-datas = [('templates', 'templates'), ('static', 'static'), ('cert.pem', '.'), ('key.pem', '.')]
-binaries = []
-hiddenimports = ['engineio.async_drivers.threading', 'flask_socketio', 'socketio', 'engineio', 'simple_websocket', 'wsproto', 'pystray._win32', 'tkinter', '_tkinter']
-hiddenimports += collect_submodules('engineio')
-hiddenimports += collect_submodules('socketio')
-tmp_ret = collect_all('pystray')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+datas = [
+    ('templates', 'templates'),
+    ('static', 'static'),
+    ('cert.pem', '.'),
+    ('key.pem', '.'),
+    ('macro_configs.json', '.'),
+    ('gamepad_configs.json', '.')
+]
 
+hiddenimports = [
+    'engineio.async_drivers.threading',
+    'flask_socketio',
+    'socketio',
+    'engineio',
+    'simple_websocket',
+    'wsproto',
+    'pynput',
+    'psutil',
+    'PIL',
+    'cryptography'
+]
 
 a = Analysis(
     ['server.py'],
     pathex=[],
-    binaries=binaries,
+    binaries=[],
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],
@@ -29,21 +42,48 @@ pyz = PYZ(a.pure)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.datas,
     [],
+    exclude_binaries=True,
     name='AirMouse',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    upx_exclude=[],
-    runtime_tmpdir=None,
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['build\\app-icon.ico'],
+    icon=['build/AppIcon.icns'],
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='AirMouse',
+)
+
+info_plist = {
+    'CFBundleDisplayName': 'AirMouse',
+    'CFBundleName': 'AirMouse',
+    'CFBundleIdentifier': 'com.yhgao99.airmouse',
+    'CFBundleVersion': '1.0.0',
+    'CFBundleShortVersionString': '1.0.0',
+    'NSHighResolutionCapable': True,
+    'NSRequiresAquaSystemAppearance': False,
+    'NSAccessibilityUsageDescription': 'AirMouse 需要辅助功能权限以模拟鼠标移动、手势控制与键盘按键输入。',
+    'NSAppleEventsUsageDescription': 'AirMouse 需要系统控制权限以触发窗口调度与手势切换。',
+}
+
+app = BUNDLE(
+    coll,
+    name='AirMouse.app',
+    icon='build/AppIcon.icns',
+    bundle_identifier='com.yhgao99.airmouse',
+    info_plist=info_plist,
 )
