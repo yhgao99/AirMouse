@@ -449,12 +449,31 @@ def run_mac_menu_bar():
     # App 或首次启动时打开扫码页并提示
     if is_frozen() or os.environ.get('AIRMOUSE_AUTO_OPEN') == '1':
         def notify_start():
-            time.sleep(0.8)
-            open_page('/connect')
-            subprocess.run([
-                'osascript', '-e',
-                'display notification "AirMouse 菜单栏已就绪，可随时从屏幕右上角扫码或管理" with title "AirMouse 已启动"'
-            ], capture_output=True)
+            if is_trusted:
+                # 已经拥有辅助功能权限：正常延时打开扫码连接页
+                time.sleep(0.8)
+                open_page('/connect')
+                subprocess.run([
+                    'osascript', '-e',
+                    'display notification "AirMouse 菜单栏已就绪，可随时从屏幕右上角扫码或管理" with title "AirMouse 已启动"'
+                ], capture_output=True)
+            else:
+                # 首次启动未授权：绝不立即弹浏览器抢占焦点遮挡系统授权框！
+                # 后台静默监听用户授权，授权完成后再自动唤起扫码页
+                try:
+                    import ApplicationServices
+                    for _ in range(120):  # 轮询最多等待 60 秒
+                        time.sleep(0.5)
+                        if ApplicationServices.AXIsProcessTrusted():
+                            time.sleep(0.4)
+                            open_page('/connect')
+                            subprocess.run([
+                                'osascript', '-e',
+                                'display notification "辅助功能权限已生效！已为您打开扫码连接页" with title "AirMouse 已就绪"'
+                            ], capture_output=True)
+                            return
+                except Exception:
+                    pass
 
         threading.Thread(target=notify_start, daemon=True).start()
 
