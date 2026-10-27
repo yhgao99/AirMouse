@@ -12,12 +12,17 @@ import webbrowser
 # 优雅处理退出信号
 signal.signal(signal.SIGTERM, lambda s, f: sys.exit(0))
 
-# macOS 激活策略设置
+# macOS 激活策略设置：隐藏 Dock 图标，作为后台守护服务静默运行
 if platform.system() == 'Darwin':
     try:
-        from AppKit import NSApplication, NSApplicationActivationPolicyRegular
-        # 允许作为原生应用在 Dock 栏显示图标，方便用户右键“退出”与管理
-        NSApplication.sharedApplication().setActivationPolicy_(NSApplicationActivationPolicyRegular)
+        from AppKit import NSBundle, NSApplication, NSApplicationActivationPolicyProhibited
+        bundle = NSBundle.mainBundle()
+        if bundle:
+            info = bundle.localizedInfoDictionary() or bundle.infoDictionary()
+            if info:
+                info['LSUIElement'] = '1'
+        # 立即锁定禁止策略，彻底隐藏 Dock 栏图标（不显示火箭）
+        NSApplication.sharedApplication().setActivationPolicy_(NSApplicationActivationPolicyProhibited)
     except Exception:
         pass
 
