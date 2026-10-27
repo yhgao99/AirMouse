@@ -1200,6 +1200,9 @@
                         } else {
                             pendingAction = null;
                         }
+                    } else if (e.touches.length > 1) {
+                        cleanupBS();
+                        pendingAction = null;
                     }
                 }, { passive: false });
 
@@ -1241,6 +1244,15 @@
 
                 container.addEventListener('touchend', (e) => {
                     if (activeTouchId === null) return;
+                    let endedTouch = null;
+                    for (let i = 0; i < e.changedTouches.length; i++) {
+                        if (e.changedTouches[i].identifier === activeTouchId) {
+                            endedTouch = e.changedTouches[i];
+                            break;
+                        }
+                    }
+                    if (!endedTouch) return;
+
                     lastTouchEndTime = Date.now();
 
                     if (isSliding) {
@@ -1273,11 +1285,16 @@
                     isSliding = false;
                 }, { passive: false });
 
-                container.addEventListener('touchcancel', () => {
-                    cleanupBS();
-                    activeTouchId = null;
-                    isSliding = false;
-                    pendingAction = null;
+                container.addEventListener('touchcancel', (e) => {
+                    for (let i = 0; i < e.changedTouches.length; i++) {
+                        if (e.changedTouches[i].identifier === activeTouchId) {
+                            cleanupBS();
+                            activeTouchId = null;
+                            isSliding = false;
+                            pendingAction = null;
+                            break;
+                        }
+                    }
                 }, { passive: true });
             });
 
