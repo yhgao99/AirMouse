@@ -8,6 +8,13 @@
     <title>Macro Deck | 快捷按键面板</title>
     <link rel="icon" type="image/png" href="/static/macro.png">
     <link rel="stylesheet" href="/static/buttons/buttons.css">
+    <style>
+        html, body {
+            overscroll-behavior: none;
+            -webkit-overscroll-behavior: none;
+            -webkit-touch-callout: none;
+        }
+    </style>
 </head>
 
 <body>
@@ -67,19 +74,11 @@
                 <input type="text" id="cfg-label" placeholder="e.g. Copy">
             </div>
             <div class="input-group">
-                <label>
-                    Emoji Icon
-                    <a href="https://emojidb.org/" target="_blank"
-                        style="color:#007AFF;text-decoration:none;font-size:10px;">Emoji DB ↗</a>
-                </label>
+                <label>Emoji 图标 <span style="color:#666;font-size:10px;">(可直接输入手机Emoji)</span></label>
                 <input type="text" id="cfg-emoji" placeholder="🚀">
             </div>
             <div class="input-group">
-                <label>
-                    Macro Keys (comma separated)
-                    <a href="https://pynput.readthedocs.io/en/latest/keyboard.html#pynput.keyboard.Key" target="_blank"
-                        style="color:#007AFF;text-decoration:none;font-size:10px;">Doc ↗</a>
-                </label>
+                <label>按键组合 <span style="color:#666;font-size:10px;">(如 ctrl,c 或 enter)</span></label>
                 <input type="text" id="cfg-keys" placeholder="ctrl,c">
             </div>
         </div>

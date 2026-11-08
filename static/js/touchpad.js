@@ -484,9 +484,10 @@ class Touchpad {
             }
         }
 
-        // 三指视觉反馈 (三指触控即进入就绪拖拽背景)
+        // 三指视觉反馈 (三指触控即进入就绪拖拽背景，并记录时间戳用于防误触中键判定)
         if (this.tCount === 3) {
             this.pad.style.background = "#001a33";
+            this.threeFingerStartTime = Date.now();
         }
 
         // 四指就绪
@@ -891,8 +892,14 @@ class Touchpad {
                         this.exitBlackoutMode();
                         return;
                     }
-                    this.socket.emit('click', { button: 'middle' });
-                    this.haptics.trigger('click');
+                    // 严格三指轻点判定：避免滑动蹭到手指或放置手掌误触发鼠标中键打开网页
+                    const now = Date.now();
+                    const duration = this.threeFingerStartTime ? (now - this.threeFingerStartTime) : 999;
+                    if (duration >= 60 && duration <= 380 && !this.hMove && !this.isThreeFingerDrag) {
+                        this.socket.emit('click', { button: 'middle' });
+                        this.haptics.trigger('click');
+                        this._showGestureToast('🖱️ 中键轻点');
+                    }
                 } else if (this.maxTCount >= 4 && !this.fourFingerTriggered) {
                     // 四指轻点 -> 打开启动台 (Launchpad)
                     this.socket.emit('system_gesture', { action: 'launchpad' });
@@ -904,6 +911,7 @@ class Touchpad {
 
         if (this.tCount === 0) {
             this.maxTCount = 0;
+            this.threeFingerStartTime = 0;
             this.isThreeFingerDrag = false;
             this.fourFingerTriggered = false;
             this.fourFingerStart = null;

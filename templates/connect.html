@@ -20,6 +20,12 @@
             --warning: #f5c451;
         }
 
+        html, body {
+            overscroll-behavior: none;
+            -webkit-overscroll-behavior: none;
+            -webkit-touch-callout: none;
+        }
+
         * {
             box-sizing: border-box;
         }
@@ -521,6 +527,21 @@
                 } catch (error) {
                     showError(element);
                 }
+            });
+
+            // 链接防误触保护：非电脑本机点击 127.0.0.1 时自动转为复制，防止误入打不开的网页
+            document.querySelectorAll('.address, .alternative-url').forEach((link) => {
+                link.addEventListener('click', (e) => {
+                    const url = link.getAttribute('href') || link.textContent.trim();
+                    if (url.includes('127.0.0.1') && window.location.hostname !== '127.0.0.1' && window.location.hostname !== 'localhost') {
+                        e.preventDefault();
+                        if (navigator.clipboard) {
+                            navigator.clipboard.writeText(url).then(() => {
+                                alert('📋 127.0.0.1 为电脑本机回路地址，手机端无法直接打开。\n已为您复制该地址！');
+                            }).catch(() => {});
+                        }
+                    }
+                });
             });
         })();
     </script>
