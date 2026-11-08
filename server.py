@@ -795,12 +795,38 @@ def on_rotate(data):
     direction = data.get('direction', 'right') if isinstance(data, dict) else 'right'
     is_mac = platform.system() == 'Darwin'
     if is_mac:
+        try:
+            # 浏览器与日常代码编辑器安全防护：绝不能把双指旋转当成 Cmd+R 强行刷新网页或丢失编辑内容
+            from AppKit import NSWorkspace
+            front_app = NSWorkspace.sharedWorkspace().frontmostApplication()
+            bundle_id = front_app.bundleIdentifier() if front_app else ""
+            app_name = (front_app.localizedName() or "").lower() if front_app else ""
+
+            UNSAFE_APPS = {
+                'com.apple.Safari', 'com.google.Chrome', 'com.microsoft.edgemac',
+                'org.mozilla.firefox', 'company.thebrowser.Browser', 'com.brave.Browser',
+                'com.operasoftware.Opera', 'com.vivaldi.Vivaldi', 'com.google.Chrome.canary',
+                'com.apple.SafariTechnologyPreview', 'com.microsoft.VSCode', 'com.sublimetext.4'
+            }
+            if bundle_id in UNSAFE_APPS or any(b in app_name for b in ['chrome', 'safari', 'firefox', 'edge', 'browser', 'arc']):
+                return
+        except Exception:
+            pass
+
         # 顺时针旋转: Cmd + R (key 15); 逆时针旋转: Cmd + L (key 37)
         # 适用于预览(Preview)、访达空格预览、照片(Photos)等原生看图与设计软件
         keycode = 15 if direction == 'right' else 37
         mac_post_cmd_key(keycode)
     else:
-        # Windows 对应旋转 (如画图/看图工具 Ctrl + R)
+        # Windows: 类似地，如果当前处于浏览器中，避免 Ctrl+R 造成刷新
+        try:
+            import win32gui
+            hwnd = win32gui.GetForegroundWindow()
+            title = (win32gui.GetWindowText(hwnd) or "").lower()
+            if any(b in title for b in ['chrome', 'edge', 'firefox', 'browser', 'opera', 'brave']):
+                return
+        except Exception:
+            pass
         key = 'r' if direction == 'right' else 'l'
         keyboard_service.handle_combo({'keys': ['ctrl', key]})
 

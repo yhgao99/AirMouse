@@ -690,33 +690,35 @@ class Touchpad {
                 const tangentialDelta = midRadius * Math.abs(totalAngleFromStart);
                 const radialDelta = Math.abs(distDeltaFromStart);
 
-                // 状态未锁定时智能裁决：旋转 vs 缩放 vs 滚动 (优先捕获旋转与缩放意图)
+                // 状态未锁定时智能裁决：滚动优先 (98% 交互场景) vs 缩放 vs 旋转
                 if (!this.twoFingerState) {
-                    // 1. 旋转判定：两指相对旋转超过 13 度 (约 0.22 弧度) 且切向位移主导
-                    if (Math.abs(totalAngleFromStart) > 0.22 && (tangentialDelta > radialDelta * 0.75)) {
-                        this.twoFingerState = 'rotate';
-                        this.hasZoomedOrRotated = true;
-                        this.scrollHistory = [];
-                        this._stopInertia();
-
-                        // 灵敏触发：转过 13 度立刻下发第一次旋转！手感极佳、零迟滞
-                        const direction = totalAngleFromStart > 0 ? 'right' : 'left';
-                        this.socket.emit('rotate', { direction });
-                        this.haptics.trigger('rotate');
-                        this._showGestureToast(direction === 'right' ? '↻ 顺时针旋转 90°' : '↺ 逆时针旋转 90°');
-                        this.accumRotateAngle = 0;
+                    // 1. 滚动优先裁决：两指中心位移明显 (> 12px) 或位移主导 (centerMoveDist >= radialDelta * 0.7 且 > 6px)
+                    // 人手自然上下/左右划动时，由于手指关节屈伸，两指间距必然发生 10-25px 弹性拉伸与微小夹角变化
+                    // 因此只要中心位置在行进，一律裁决并锁定为【双指平滑滚动】，绝不误判为缩放或旋转！
+                    if (centerMoveDist > 12 || (centerMoveDist > 6 && centerMoveDist >= radialDelta * 0.7)) {
+                        this.twoFingerState = 'scroll';
                     }
-                    // 2. 缩放判定：两指间距变化大于 16px 且径向位移主导
-                    else if (radialDelta > 16 && (radialDelta > tangentialDelta * 0.75)) {
+                    // 2. 缩放判定：两指中心相对静止 (< 18px)，且两指间距发生显著且主动的捏合/扩张 (> 32px)，径向主导
+                    else if (centerMoveDist < 18 && radialDelta > 32 && (radialDelta > tangentialDelta * 1.5)) {
                         this.twoFingerState = 'pinch';
                         this.accumZoomDist = 0;
                         this.hasZoomedOrRotated = true;
                         this.scrollHistory = [];
                         this._stopInertia();
                     }
-                    // 3. 滚动判定：两指中心移动明显 (> 14px) 且间距与角度保持稳定
-                    else if (centerMoveDist > 14 && radialDelta < 12 && Math.abs(totalAngleFromStart) < 0.18) {
-                        this.twoFingerState = 'scroll';
+                    // 3. 旋转判定：两指中心极静止 (< 16px)，间距稳定 (< 22px)，相对旋转角度超过 35 度 (> 0.60 弧度) 且切向主导
+                    // 严格杜绝在普通滑动时误发 Cmd+R / Ctrl+R 造成网页莫名刷新
+                    else if (centerMoveDist < 16 && radialDelta < 22 && Math.abs(totalAngleFromStart) > 0.60 && (tangentialDelta > radialDelta * 1.8)) {
+                        this.twoFingerState = 'rotate';
+                        this.hasZoomedOrRotated = true;
+                        this.scrollHistory = [];
+                        this._stopInertia();
+
+                        const direction = totalAngleFromStart > 0 ? 'right' : 'left';
+                        this.socket.emit('rotate', { direction });
+                        this.haptics.trigger('rotate');
+                        this._showGestureToast(direction === 'right' ? '↻ 顺时针旋转 90°' : '↺ 逆时针旋转 90°');
+                        this.accumRotateAngle = 0;
                     }
                 }
 
@@ -833,8 +835,8 @@ class Touchpad {
             this.longPressTimer = null;
         }
 
-        // --- 处理惯性滑行触发 (缩放与旋转期间绝不触发滑行！) ---
-        if (!this.isThreeFingerDrag && !this.hasZoomedOrRotated && !this.twoFingerState && prevTCount === 2 && this.tCount === 0 && this.scrollHistory.length >= 2) {
+        // --- 处理惯性滑行触发 (滚动结束平滑甩动滑行，缩放与旋转期间绝不触发滑行！) ---
+        if (!this.isThreeFingerDrag && !this.hasZoomedOrRotated && (this.twoFingerState === 'scroll' || !this.twoFingerState) && prevTCount === 2 && this.tCount === 0 && this.scrollHistory.length >= 2) {
             const pFirst = this.scrollHistory[0];
             const pLast = this.scrollHistory[this.scrollHistory.length - 1];
             const dt = pLast.time - pFirst.time;
