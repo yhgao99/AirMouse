@@ -177,6 +177,13 @@
             box-sizing: border-box;
         }
 
+        #input-window::placeholder {
+            color: rgba(255, 255, 255, 0.32);
+            font-size: 14px;
+            font-weight: 400;
+            letter-spacing: 0.3px;
+        }
+
         /* 迷你触摸板样式 */
         #pad {
             flex: 1;
@@ -636,6 +643,12 @@
             user-select: none !important;
         }
 
+        body.layout-landscape #input-window::placeholder {
+            font-size: 11px !important;
+            color: rgba(255, 255, 255, 0.38) !important;
+            line-height: 22px !important;
+        }
+
         body.layout-landscape .input-container:focus-within #input-window {
             border-radius: 14px !important;
             border-color: var(--primary) !important;
@@ -953,7 +966,7 @@
 
     <div class="main-content">
         <div class="input-container" id="container">
-            <textarea id="input-window" placeholder="点击这里开始说话(用输入法语音)..." spellcheck="false"></textarea>
+            <textarea id="input-window" placeholder="输入文字或语音..." spellcheck="false"></textarea>
             <div class="box-actions" style="position: absolute; right: 20px; bottom: 12px; display: flex; gap: 10px;">
                 <button class="box-btn btn-clear" data-action="clear" title="清空"
                     style="background:#2a2a2a; border:none; border-radius:10px; width:40px; height:40px;">
