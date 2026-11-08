@@ -127,8 +127,56 @@ def handle_move(data):
 
     wake_up_cursor()
 
+def reset_mac_modifier_keys():
+    """彻底重置 macOS 上所有可能的残留修饰键 (Command, Control, Option, Shift)，防止键位粘滞"""
+    if platform.system() != 'Darwin':
+        return
+    try:
+        import Quartz
+        src = Quartz.CGEventSourceCreate(Quartz.kCGEventSourceStateHIDSystemState)
+        MODIFIER_KEYCODES = [55, 54, 59, 62, 58, 61, 56, 60]  # Cmd, Ctrl, Alt/Opt, Shift
+        for code in MODIFIER_KEYCODES:
+            ku = Quartz.CGEventCreateKeyboardEvent(src, code, False)
+            Quartz.CGEventSetFlags(ku, 0)
+            Quartz.CGEventPost(Quartz.kCGHIDEventTap, ku)
+    except Exception:
+        pass
+
+def safe_mac_mouse_event(event_type, mouse_button, click_count=1):
+    """在 macOS 上以绝对纯净的 0 标志位发送鼠标事件，彻底杜绝继承任何残留的 Command/Shift 键"""
+    try:
+        import Quartz
+        pos = mouse.position
+        cg_point = Quartz.CGPoint(pos[0], pos[1])
+        src = Quartz.CGEventSourceCreate(Quartz.kCGEventSourceStateHIDSystemState)
+        ev = Quartz.CGEventCreateMouseEvent(src, event_type, cg_point, mouse_button)
+        # 核心安全保障：强制将事件修饰标志置为 0，防止 Dock 图标被当成 Cmd+Click 打开目录
+        Quartz.CGEventSetFlags(ev, 0)
+        if click_count > 0:
+            Quartz.CGEventSetIntegerValueField(ev, Quartz.kCGMouseEventClickState, click_count)
+        Quartz.CGEventPost(Quartz.kCGHIDEventTap, ev)
+        return True
+    except Exception:
+        return False
+
 def handle_click(data):
     button_type = data.get('button')
+    if platform.system() == 'Darwin':
+        import Quartz
+        btn_map = {
+            'left': (Quartz.kCGEventLeftMouseDown, Quartz.kCGEventLeftMouseUp, Quartz.kCGMouseButtonLeft),
+            'right': (Quartz.kCGEventRightMouseDown, Quartz.kCGEventRightMouseUp, Quartz.kCGMouseButtonRight),
+            'middle': (Quartz.kCGEventOtherMouseDown, Quartz.kCGEventOtherMouseUp, Quartz.kCGMouseButtonCenter)
+        }
+        if button_type in btn_map:
+            # 点击前确保修饰键纯净，绝不残留 Command 键
+            reset_mac_modifier_keys()
+            down_type, up_type, btn = btn_map[button_type]
+            safe_mac_mouse_event(down_type, btn, 1)
+            time.sleep(0.01)
+            safe_mac_mouse_event(up_type, btn, 1)
+            return
+
     if button_type == 'left':
         mouse.click(Button.left)
     elif button_type == 'right':
@@ -143,12 +191,22 @@ def handle_click(data):
 def handle_drag_start():
     global _is_dragging
     if not _is_dragging:
-        mouse.press(Button.left)
+        if platform.system() == 'Darwin':
+            import Quartz
+            reset_mac_modifier_keys()
+            safe_mac_mouse_event(Quartz.kCGEventLeftMouseDown, Quartz.kCGMouseButtonLeft, 1)
+        else:
+            mouse.press(Button.left)
         _is_dragging = True
 
 def handle_drag_end():
     global _is_dragging
-    mouse.release(Button.left)
+    if platform.system() == 'Darwin':
+        import Quartz
+        safe_mac_mouse_event(Quartz.kCGEventLeftMouseUp, Quartz.kCGMouseButtonLeft, 1)
+        reset_mac_modifier_keys()
+    else:
+        mouse.release(Button.left)
     _is_dragging = False
 
 def handle_mid_down():

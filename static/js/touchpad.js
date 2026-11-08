@@ -894,14 +894,8 @@ class Touchpad {
                         this.exitBlackoutMode();
                         return;
                     }
-                    // 严格三指轻点判定：避免滑动蹭到手指或放置手掌误触发鼠标中键打开网页
-                    const now = Date.now();
-                    const duration = this.threeFingerStartTime ? (now - this.threeFingerStartTime) : 999;
-                    if (duration >= 60 && duration <= 380 && !this.hMove && !this.isThreeFingerDrag) {
-                        this.socket.emit('click', { button: 'middle' });
-                        this.haptics.trigger('click');
-                        this._showGestureToast('🖱️ 中键轻点');
-                    }
+                    // 防误触保护：原生 MacBook 触控板三指轻点为查词/聚焦，绝不发送鼠标中键
+                    // 彻底杜绝手掌或多指轻触时误发鼠标中键导致浏览器莫名打开新网页/新标签页
                 } else if (this.maxTCount >= 4 && !this.fourFingerTriggered) {
                     // 四指轻点 -> 打开启动台 (Launchpad)
                     this.socket.emit('system_gesture', { action: 'launchpad' });

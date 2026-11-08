@@ -543,8 +543,16 @@ def run_with_tray():
 
 @socketio.on('connect')
 def handle_connect():
+    mouse_service.reset_mac_modifier_keys()
+    keyboard_service.release_all_keys()
     os_type = platform.system()
     socketio.emit('os_info', {'os': os_type})
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    keyboard_service.release_all_keys()
+    mouse_service.handle_drag_end()
+    mouse_service.reset_mac_modifier_keys()
 
 @socketio.on('load_macros')
 def handle_load():
@@ -751,39 +759,46 @@ def on_system_gesture(data):
             keyboard_service.handle_combo({'keys': ['ctrl', 'win', 'right']})
 
 def mac_post_cmd_key(keycode):
-    """在 macOS 上发送 Command + 对应键"""
+    """在 macOS 上安全发送 Command + 对应键，确保成对按下与释放，彻底防止 Command 键滞留"""
     try:
         import Quartz
         src = Quartz.CGEventSourceCreate(Quartz.kCGEventSourceStateHIDSystemState)
+        CMD_KEY = 55  # kVK_Command (Command 硬件物理键码)
+
+        # 1. 发送 Command 键按下
+        cmd_d = Quartz.CGEventCreateKeyboardEvent(src, CMD_KEY, True)
+        Quartz.CGEventSetFlags(cmd_d, Quartz.kCGEventFlagMaskCommand)
+        Quartz.CGEventPost(Quartz.kCGHIDEventTap, cmd_d)
+        time.sleep(0.01)
+
+        # 2. 发送 目标功能键按下 (带 Command 硬件修饰标志)
         kd = Quartz.CGEventCreateKeyboardEvent(src, keycode, True)
         Quartz.CGEventSetFlags(kd, Quartz.kCGEventFlagMaskCommand)
         Quartz.CGEventPost(Quartz.kCGHIDEventTap, kd)
         time.sleep(0.01)
+
+        # 3. 发送 目标功能键抬起
         ku = Quartz.CGEventCreateKeyboardEvent(src, keycode, False)
         Quartz.CGEventSetFlags(ku, Quartz.kCGEventFlagMaskCommand)
         Quartz.CGEventPost(Quartz.kCGHIDEventTap, ku)
+        time.sleep(0.01)
+
+        # 4. 发送 Command 键彻底抬起，并且将修饰标志完全清空为 0
+        cmd_u = Quartz.CGEventCreateKeyboardEvent(src, CMD_KEY, False)
+        Quartz.CGEventSetFlags(cmd_u, 0)
+        Quartz.CGEventPost(Quartz.kCGHIDEventTap, cmd_u)
     except Exception as e:
         print(f"mac_post_cmd_key error: {e}")
 
 @socketio.on('zoom')
 def on_zoom(data):
-    # 双指缩放：放大 / 缩小 (零延迟、零卡顿、无阻塞)
+    # 双指缩放：放大 / 缩小 (经由 mac_post_cmd_key 完整生命周期调度，绝无修饰键残留)
     direction = data.get('direction', 'in') if isinstance(data, dict) else 'in'
     is_mac = platform.system() == 'Darwin'
     if is_mac:
-        try:
-            import Quartz
-            src = Quartz.CGEventSourceCreate(Quartz.kCGEventSourceStateHIDSystemState)
-            # 触发原生通用缩放快捷键：放大 Cmd + '=' (key 24); 缩小 Cmd + '-' (key 27)
-            keycode = 24 if direction == 'in' else 27
-            kd = Quartz.CGEventCreateKeyboardEvent(src, keycode, True)
-            Quartz.CGEventSetFlags(kd, Quartz.kCGEventFlagMaskCommand)
-            ku = Quartz.CGEventCreateKeyboardEvent(src, keycode, False)
-            Quartz.CGEventSetFlags(ku, Quartz.kCGEventFlagMaskCommand)
-            Quartz.CGEventPost(Quartz.kCGHIDEventTap, kd)
-            Quartz.CGEventPost(Quartz.kCGHIDEventTap, ku)
-        except Exception as e:
-            print(f"zoom error: {e}")
+        # Command + '=' (key 24) 为放大, Command + '-' (key 27) 为缩小
+        keycode = 24 if direction == 'in' else 27
+        mac_post_cmd_key(keycode)
     else:
         # Windows: Ctrl + '+' / Ctrl + '-'
         key = '+' if direction == 'in' else '-'
@@ -857,6 +872,8 @@ def check_already_running():
 
 if __name__ == '__main__':
     check_already_running()
+    mouse_service.reset_mac_modifier_keys()
+    keyboard_service.release_all_keys()
 
     use_tray = os.environ.get('AIRMOUSE_NO_TRAY') != '1'
     hide_console = os.environ.get('AIRMOUSE_SHOW_CONSOLE') != '1'

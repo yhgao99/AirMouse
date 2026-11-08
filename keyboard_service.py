@@ -15,6 +15,27 @@ def repeat_key(key_obj, stop_event):
         keyboard.press(key_obj)
         if stop_event.wait(0.05): break
 
+def release_all_keys():
+    """彻底停止所有自动连发线程并释放所有可能按下的按键"""
+    global active_repeats
+    for code, stop_event in list(active_repeats.items()):
+        try:
+            stop_event.set()
+        except Exception:
+            pass
+    active_repeats.clear()
+    for k in (Key.cmd, Key.cmd_l, Key.cmd_r, Key.ctrl, Key.ctrl_l, Key.ctrl_r, Key.alt, Key.alt_l, Key.alt_r, Key.shift, Key.shift_l, Key.shift_r):
+        try:
+            keyboard.release(k)
+        except Exception:
+            pass
+    if platform.system() == 'Darwin':
+        try:
+            from mouse_service import reset_mac_modifier_keys
+            reset_mac_modifier_keys()
+        except Exception:
+            pass
+
 def handle_key_action(data):
     action = data.get('action', 'tap') # 'down' 或 'up' 或 'tap'
     key_code = data['key'].lower().strip()
@@ -35,6 +56,9 @@ def handle_key_action(data):
         if key_code in active_repeats:
             return
         keyboard.press(target_key)
+        # 修饰键 (Cmd, Ctrl, Alt, Shift 等) 绝不启动自动连发重复线程，防止失控滞留
+        if target_key in (Key.cmd, Key.cmd_l, Key.cmd_r, Key.ctrl, Key.ctrl_l, Key.ctrl_r, Key.alt, Key.alt_l, Key.alt_r, Key.shift, Key.shift_l, Key.shift_r):
+            return
         stop_event = threading.Event()
         active_repeats[key_code] = stop_event
         threading.Thread(target=repeat_key, args=(target_key, stop_event), daemon=True).start()
@@ -93,6 +117,15 @@ def handle_combo(data):
     finally:
         # 逆序释放所有键
         for target in reversed(pressed_keys):
-            keyboard.release(target)
+            try:
+                keyboard.release(target)
+            except Exception:
+                pass
             if is_mac:
                 time.sleep(0.01)
+        if is_mac:
+            try:
+                from mouse_service import reset_mac_modifier_keys
+                reset_mac_modifier_keys()
+            except Exception:
+                pass
